@@ -1,6 +1,6 @@
 # StudyNote
 Android学习笔记
-- [ ] Activity与fragment生命周期
+- [x] Activity与fragment生命周期
   - [ ] 正常情况下生命周期 
   - [ ] 异常情况下生命周期 
 - [ ] activity启动模式
