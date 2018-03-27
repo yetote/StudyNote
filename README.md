@@ -4,20 +4,20 @@ Android学习笔记
   - [ ] 正常情况下生命周期 
   - [ ] 异常情况下生命周期 
 - [ ] activity启动模式
-   - [ ] standard、
-   - [ ] singleTop、
-   - [ ] singleTask、
+   - [ ] standard
+   - [ ] singleTop
+   - [ ] singleTask
    - [ ] singleInstance 
 - [ ] 四大组件
    - [ ] activity 
-   - [ ] service、
-   - [ ] content provider、
-   - [ ] broadcast receiver。
+   - [ ] service
+   - [ ] content provider
+   - [ ] broadcast receiver
 - [ ] 布局优化
    - [ ] 常用布局使用场景
    - [ ] include
    - [ ] viewstub
-   - [ ] Metarial Design
+- [ ] Material Design
 - [ ] 自定义控件优化
    - [ ] 自定义控件
    - [ ] 优化
