@@ -1,13 +1,17 @@
 # StudyNote
 Android学习笔记
-- [ ] Activity与fragment生命周期
-  - [ ] 正常情况下生命周期 
-  - [ ] 异常情况下生命周期 
+- [x] Activity生命周期
+  - [x] 正常情况下生命周期
+  - [x] 异常情况下生命周期  
+   [掘金传送门](https://juejin.im/post/5abb5cf751882555770c8561) 
 - [ ] activity启动模式
    - [ ] standard
    - [ ] singleTop
    - [ ] singleTask
    - [ ] singleInstance 
+- [ ] fragment生命周期  
+   - [ ] 正常情况下生命周期  
+   - [ ] 异常情况下生命周期  
 - [ ] 四大组件
    - [ ] activity 
    - [ ] service
