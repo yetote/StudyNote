@@ -22,9 +22,10 @@ Android学习笔记
    - [ ] include
    - [ ] viewstub
 - [ ] Material Design
-- [ ] 自定义控件优化
-   - [ ] 自定义控件
-   - [ ] 优化
+- [ ] 自定义控件优化    
+  - [x] View的手势事件
+  - [ ] 自定义控件
+  - [ ] 优化
 - [ ] 线程池和锁机制
    - [ ] 线程池
    - [ ] 锁和synchronized关键字
