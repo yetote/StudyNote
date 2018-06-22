@@ -1,10 +1,10 @@
 # StudyNote
 Android学习笔记
 - [x] Activity生命周期
-  - [x] 正常情况下生命周期
+  - [x] 正常情况下生命周期(https://github.com/yetote/StudyNote/blob/master/Activity生命周期.md)
   - [x] 异常情况下生命周期
      [掘金传送门](https://juejin.im/post/5abb5cf751882555770c8561)
-- [x] Activity启动模试（汗）
+- [x] Activity启动模试（汗）(https://github.com/yetote/StudyNote/blob/master/Android启动模式.md)
   - [x] singleInstance
   - [x] singleTask
   - [x] singleTop
@@ -23,7 +23,7 @@ Android学习笔记
    - [ ] viewstub
 - [ ] Material Design
 - [ ] 自定义控件优化    
-  - [x] View的手势事件
+  - [x] View的手势事件(https://github.com/yetote/StudyNote/blob/master/view手势事件.md)
   - [ ] 自定义控件
   - [ ] 优化
 - [ ] 线程池和锁机制
@@ -66,6 +66,6 @@ Android学习笔记
    - [ ]  组件化
    - [ ]  插件化
 - [ ] openGLES
-  - [x] 简介与基础
+  - [x] 简介与基础(https://github.com/yetote/StudyNote/blob/master/简介与基础.md)
   
 ***2018-06-22 16:44:30***
