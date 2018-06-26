@@ -66,6 +66,7 @@ Android学习笔记
    - [ ]  组件化
    - [ ]  插件化
 - [ ] openGLES
-  - [x] [简介与基础](https://github.com/yetote/StudyNote/blob/master/简介与基础.md)
+  - [x] [简介与基础](https://github.com/yetote/StudyNote/blob/master/简介与基础.md)   
+  - [x] [正交投影与透视投影(含有LaTex)](https://github.com/yetote/StudyNote/blob/master/正交投影与透视投影.md)  
   
 ***2018-06-22 16:44:30***
