@@ -69,5 +69,7 @@ Android学习笔记
   - [x] [简介与基础](https://github.com/yetote/StudyNote/blob/master/简介与基础.md)   
   - [x] [正交投影与透视投影(含有LaTex)](https://github.com/yetote/StudyNote/blob/master/正交投影与透视投影.md)  
   - [x] [纹理（未完成）](https://github.com/yetote/StudyNote/blob/master/纹理(未完成).md)  
+- [ ] 音视频处理
+  - [x] [学习计划](https://github.com/yetote/StudyNote/blob/master/音视频学习计划.md)   
   
 ***2018-06-22 16:44:30***
