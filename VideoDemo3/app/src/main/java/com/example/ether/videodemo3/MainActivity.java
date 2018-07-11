@@ -49,7 +49,7 @@ public class MainActivity extends AppCompatActivity {
     private boolean isRecording;
     private boolean isPlaying;
     private AudioTrack audioTrack;
-    private ReadWav readWav;
+    private Read readWav;
     private int offset = 0;
 
     @Override
@@ -76,28 +76,26 @@ public class MainActivity extends AppCompatActivity {
 //            wavWrite.close();
         });
         play.setOnClickListener(v -> {
+            readWav = new Read(path, BUFFER_SIZE);
             isPlaying = true;
             startPlay();
         });
     }
 
     private void startPlay() {
-//        if (isPlaying) {
-//            new Thread(() -> {
-//                while (isPlaying) {
-//                    audioTrack.write(readWav.read(), offset, AudioTrack.WRITE_NON_BLOCKING);
+//        readWav.readHeader();
+        while (isPlaying) {
+            new Thread(() -> {
+                byte[] data = readWav.readData();
+                if (data != null) {
+                    audioTrack.write(data, 0, data.length);
 //                    audioTrack.play();
-//                    offset += BUFFER_SIZE;
-//                    Log.e(TAG, "startPlay: " );
-//                    if (offset == BUFFER_SIZE * 5) return;
-//                }
-//            }).start();
-//        } else {
-//            audioTrack.stop();
-//            audioTrack.release();
-//        }
-        Log.e(TAG, "startPlay: " + readWav.read());
-//        Log.e(TAG, "startPlay: " + readWav.read().toString());
+                } else {
+                    isPlaying = false;
+                }
+
+            }).start();
+        }
     }
 
     private void init() {
@@ -121,7 +119,7 @@ public class MainActivity extends AppCompatActivity {
                     .build();
 
         }
-        readWav = new ReadWav(BUFFER_SIZE * 100, path);
+
     }
 
     @Override
@@ -146,7 +144,7 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(this, "录音器未初始化", Toast.LENGTH_SHORT).show();
         } else {
             audioRecord.startRecording();
-            wavWrite.writeHeader(2,44100);
+            wavWrite.writeHeader(2, 44100);
             new Thread(() -> {
                 byte[] buffer = new byte[BUFFER_SIZE];
                 while (isRecording) {

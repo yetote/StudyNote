@@ -26,7 +26,8 @@ public class WavWrite {
         this.size = size;
         this.path = path;
         count = 0;
-        byteBuffer = ByteBuffer.allocate(size);
+        byteBuffer = ByteBuffer.allocate(size)
+                .order(ByteOrder.LITTLE_ENDIAN);
         file = new File(path);
         if (!file.exists()) {
             try {
@@ -54,11 +55,11 @@ public class WavWrite {
     WavWrite writeHeader(int channelNum, int sampleRateInHz) {
         header = new WavHeader((short) channelNum, sampleRateInHz);
 
-        byteBuffer.putInt(header.chunkId);
+        byteBuffer.put(header.chunkId.getBytes());
         byteBuffer.putInt(header.chunkSize);
-        byteBuffer.putInt(header.format);
+        byteBuffer.put(header.format.getBytes());
 
-        byteBuffer.putInt(header.subChunk1Id);
+        byteBuffer.put(header.subChunk1Id.getBytes());
         byteBuffer.putInt(header.subChunk1Size);
         byteBuffer.putShort(header.audioFormat);
         byteBuffer.putShort(header.numChannel);
@@ -67,7 +68,7 @@ public class WavWrite {
         byteBuffer.putShort(header.blockAlign);
         byteBuffer.putShort(header.bitsPerSample);
 
-        byteBuffer.putInt(header.subChunk2Id);
+        byteBuffer.put(header.subChunk2Id.getBytes());
         byteBuffer.putInt(header.subChunk2Size);
         try {
             byteBuffer.flip();
