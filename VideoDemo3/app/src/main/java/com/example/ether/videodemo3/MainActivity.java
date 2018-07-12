@@ -39,6 +39,7 @@ import static android.media.AudioTrack.STATE_UNINITIALIZED;
 
 
 public class MainActivity extends AppCompatActivity {
+    public static boolean isPlaying;
     private AudioRecord audioRecord;
     private Button start, stop, play;
     public static final int BUFFER_SIZE = 44100 * 20 / 1000 * 5 * 2 * 2;
@@ -47,7 +48,6 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
     public static final int AUDIO_RECORD_PERMISSION_CODE = 1;
     private boolean isRecording;
-    private boolean isPlaying;
     private AudioTrack audioTrack;
     private Read readWav;
     private int offset = 0;
@@ -83,19 +83,21 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void startPlay() {
-//        readWav.readHeader();
-        while (isPlaying) {
-            new Thread(() -> {
+        readWav.readHeader();
+        new Thread(() -> {
+            while (isPlaying) {
                 byte[] data = readWav.readData();
                 if (data != null) {
                     audioTrack.write(data, 0, data.length);
-//                    audioTrack.play();
+                    audioTrack.play();
                 } else {
                     isPlaying = false;
                 }
+//                isPlaying = false;
+//                Log.e(TAG, "startPlay: " + 1);
 
-            }).start();
-        }
+            }
+        }).start();
     }
 
     private void init() {

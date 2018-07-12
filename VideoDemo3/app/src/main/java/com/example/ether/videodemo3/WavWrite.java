@@ -115,6 +115,7 @@ public class WavWrite {
 //        } catch (IOException e) {
 //            e.printStackTrace();
 //        }
+//        Log.e(TAG, "writeDataSize: "+ );
         RandomAccessFile ras = null;
         try {
             ras = new RandomAccessFile(path, "rw");

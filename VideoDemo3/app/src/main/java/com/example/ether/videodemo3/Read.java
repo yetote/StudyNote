@@ -1,5 +1,7 @@
 package com.example.ether.videodemo3;
 
+import android.util.Log;
+
 import java.io.DataInputStream;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -9,13 +11,16 @@ import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
 
 public class Read {
-    private ByteBuffer headerBuffer, dataBuffer;
+    private ByteBuffer headerBuffer;
+    private ByteBuffer dataBuffer;
     private FileInputStream inputStream;
     private FileChannel channel;
     private String path;
     int size;
     private WavHeader header;
     public static final int DATA_POSITION = 44;
+    int count = 0;
+    private static final String TAG = "Read";
 
     public Read(String path, int size) {
         this.path = path;
@@ -59,11 +64,30 @@ public class Read {
 
     public byte[] readData() {
         try {
-            byte[] data;
-            channel.read(dataBuffer,DATA_POSITION);
-            data = dataBuffer.array();
-            dataBuffer.clear();
-            return data;
+            byte[] data = new byte[size];
+            Log.e(TAG, "readData: count" + count + "         size      " + channel.size());
+            if (count == channel.size()) {
+                MainActivity.isPlaying = false;
+            } else {
+                channel.position(count + DATA_POSITION);
+                count += size;
+                int resultSize = channel.read(dataBuffer);
+                Log.e(TAG, "readData: " + resultSize);
+                if (resultSize != size) {
+                    Log.e(TAG, "readData: " + "null");
+                    MainActivity.isPlaying = false;
+                    return null;
+                } else {
+                    dataBuffer.flip();
+                    for (int i = 0; i < size; i++) {
+                        data[i] = dataBuffer.get();
+
+                    }
+                    dataBuffer.clear();
+                    return data;
+                }
+            }
+            Log.e(TAG, "readData:count " + count);
         } catch (IOException e) {
             e.printStackTrace();
         }
