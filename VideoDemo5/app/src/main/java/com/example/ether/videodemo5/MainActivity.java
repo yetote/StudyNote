@@ -6,17 +6,36 @@ import android.media.MediaFormat;
 import android.media.MediaMuxer;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class MainActivity extends AppCompatActivity {
+    private static final String TAG = "MainActivity";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        String parentPath = this.getExternalCacheDir().getPath();
+        String testPath = parentPath + "/test.mp4";
+        String audioPath = parentPath + "/Audio.mp4";
+        String videoPath = parentPath + "/video.mp4";
+
+        File file = new File(testPath);
+        if (!file.exists()) {
+            try {
+                file.getParentFile().mkdir();
+                file.createNewFile();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        combineTwoVideos(audioPath, 0, videoPath, file);
+
     }
 
     private static void combineTwoVideos(String audioPath, long audioStartTime, String frameVideoPath, File combinedVideoOutFile) {
@@ -34,7 +53,7 @@ public class MainActivity extends AppCompatActivity {
 
         MediaMuxer muxer = null; //用于合成音频与视频
         try {
-            muxer = new MediaMuxer(frameVideoPath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
+            muxer = new MediaMuxer(combinedVideoOutFile.getPath(), MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
             audioVideoExtractor.setDataSource(audioPath);
             int audioTrackCount = audioVideoExtractor.getTrackCount();
             for (int i = 0; i < audioTrackCount; i++) {
@@ -107,13 +126,16 @@ public class MainActivity extends AppCompatActivity {
             }
         } catch (IOException e) {
             e.printStackTrace();
-        }finally {
+        } finally {
             audioVideoExtractor.release();
             frameVideoExtractor.release();
             if (muxer != null) {
+                muxer.stop();
                 muxer.release();
             }
+            Log.e(TAG, "combineTwoVideos: " + "finish");
         }
 
     }
+
 }
