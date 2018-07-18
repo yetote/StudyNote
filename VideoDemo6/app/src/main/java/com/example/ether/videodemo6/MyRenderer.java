@@ -13,6 +13,7 @@ import static android.opengl.GLES20.glClear;
 import static android.opengl.GLES20.glViewport;
 import static android.opengl.GLES20.glClearColor;
 import static android.opengl.Matrix.multiplyMM;
+import static android.opengl.Matrix.orthoM;
 import static android.opengl.Matrix.rotateM;
 import static android.opengl.Matrix.setIdentityM;
 import static android.opengl.Matrix.translateM;
@@ -23,6 +24,7 @@ public class MyRenderer implements GLSurfaceView.Renderer {
     private Context context;
     private float[] modelMatrix = new float[16];
     private float[] viewModelMatrxi = new float[16];
+    private float[] projectMatrix = new float[16];
 
     public MyRenderer(Context context) {
         this.context = context;
@@ -39,20 +41,16 @@ public class MyRenderer implements GLSurfaceView.Renderer {
     @Override
     public void onSurfaceChanged(GL10 gl, int width, int height) {
         glViewport(0, 0, width, height);
-        Matrix.perspectiveM(viewModelMatrxi, 0, 45, (float) width / (float) height, 1f, 10f);
-        setIdentityM(modelMatrix, 0);
-        translateM(modelMatrix, 0, 0, 0, -2.5f);
-        rotateM(modelMatrix, 0, -60f, 1f, 0, 0);
-        float[] temp = new float[16];
-        multiplyMM(temp, 0, viewModelMatrxi, 0, modelMatrix, 0);
-        System.arraycopy(temp, 0, viewModelMatrxi, 0, temp.length);
+        final float aspectRatio = width > height ? (float) width / (float) height : (float) height / (float) width;
+        if (width > height) orthoM(projectMatrix, 0, -aspectRatio, aspectRatio, -1, 1, -1, 1);
+        else orthoM(projectMatrix, 0, -1, 1, -aspectRatio, aspectRatio, -1, 1);
     }
 
     @Override
     public void onDrawFrame(GL10 gl) {
         glClear(GL_COLOR_BUFFER_BIT);
         program.useProgram();
-        program.setUniform(viewModelMatrxi);
+        program.setUniform(projectMatrix);
         triangle.bindData(program);
         triangle.draw();
     }
