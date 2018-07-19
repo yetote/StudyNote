@@ -8,17 +8,15 @@ import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
 import android.media.MediaRecorder;
+import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.Buffer;
 import java.nio.ByteBuffer;
 
 public class MainActivity extends AppCompatActivity {
@@ -26,9 +24,7 @@ public class MainActivity extends AppCompatActivity {
     public static final int CHANNEL_COUNT = 2;
     public static final int CHANNEL_CONFIG = AudioFormat.CHANNEL_IN_STEREO;
     public static final int AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT;
-    private FileOutputStream fos;
     private int bufferSize;
-    private byte[] buffer;
     private AudioRecord audioRecord;
     public static final String MIME = "audio/mp4a-latm";
     public static final int RATE = 256000;
@@ -63,7 +59,6 @@ public class MainActivity extends AppCompatActivity {
                             }
                         }
                     }).start();
-
                 }
             }
         });
@@ -80,7 +75,6 @@ public class MainActivity extends AppCompatActivity {
         stop = findViewById(R.id.stop);
         encode = findViewById(R.id.encode);
         bufferSize = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT) * 2;
-        buffer = new byte[bufferSize];
         audioRecord = new AudioRecord(MediaRecorder.AudioSource.MIC, SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT, bufferSize);
         path = this.getExternalCacheDir().getPath() + "/test.aac";
         write = new FileWrite(bufferSize, path);
@@ -98,13 +92,13 @@ public class MainActivity extends AppCompatActivity {
 
 
     void startEncode() {
-        int index = mediaCodec.dequeueInputBuffer(-1);
+        int index = mediaCodec.dequeueInputBuffer(-1);//获取可使用缓冲区位置索引
         if (index >= 0) {
-            final ByteBuffer buffer = mediaCodec.getInputBuffer(index);
+            final ByteBuffer buffer = mediaCodec.getInputBuffer(index);//获取可用的缓冲区
             buffer.clear();
             int length = audioRecord.read(buffer, bufferSize);
             if (length > 0) {
-                mediaCodec.queueInputBuffer(index, 0, length, System.nanoTime() / 1000, 0);
+                mediaCodec.queueInputBuffer(index, 0, length, System.nanoTime() / 1000, 0);//输入流如队列
             } else {
                 Log.e("wuwang", "length-->" + length);
             }
@@ -112,7 +106,7 @@ public class MainActivity extends AppCompatActivity {
         MediaCodec.BufferInfo mInfo = new MediaCodec.BufferInfo();
         int outIndex;
         do {
-            outIndex = mediaCodec.dequeueOutputBuffer(mInfo, 0);
+            outIndex = mediaCodec.dequeueOutputBuffer(mInfo, 0);//获取可用的输出区缓冲索引
             Log.e("wuwang", "audio flag---->" + mInfo.flags + "/" + outIndex);
             if (outIndex >= 0) {
                 ByteBuffer buffer = mediaCodec.getOutputBuffer(outIndex);
