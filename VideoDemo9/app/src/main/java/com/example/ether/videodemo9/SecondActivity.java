@@ -58,7 +58,7 @@ public class SecondActivity extends AppCompatActivity {
                 byte[] header_pps = {0, 0, 0, 1, 104, (byte) 206, 60, (byte) 128, 0, 0, 0, 1, 6, (byte) 229, 1, (byte) 151, (byte) 128};
                 format.setByteBuffer("csd-0", ByteBuffer.wrap(header_sps));
                 format.setByteBuffer("csd-1", ByteBuffer.wrap(header_pps));
-                format.setInteger(MediaFormat.KEY_FRAME_RATE, 30);
+//                format.setInteger(MediaFormat.KEY_FRAME_RATE, 30);
                 mediaCodec.configure(format, surfaceHolder.getSurface(), null, 0);
                 mediaCodec.start();
             }
@@ -81,19 +81,23 @@ public class SecondActivity extends AppCompatActivity {
         public void run() {
             super.run();
             while (isDecoding) {
-                int index = mediaCodec.dequeueInputBuffer(-1);
+                int index = mediaCodec.dequeueInputBuffer(100);
                 if (index >= 0) {
                     ByteBuffer buffer = mediaCodec.getInputBuffer(index);
                     buffer.clear();
                     byte[] temp = new byte[600 * 800 * 2 / 3];
                     int result = read.readData(temp);
-                    if (result == -1) {
-                        Log.e(TAG, "run: 读取完成" );
-                        break;
+                    if (result == 0) {
+                        Log.e(TAG, "run: 读取完成");
+                    } else {
+                        byte[] data = new byte[result];
+                        for (int i = 0; i < result; i++) {
+                            data[i] = temp[i];
+                        }
+                        buffer.put(data);
+                        mediaCodec.queueInputBuffer(index, 0, data.length, System.nanoTime() / 1000, 0);
                     }
-                    Log.e(TAG, "run: "+result );
-                    buffer.put(temp);
-                    mediaCodec.queueInputBuffer(index, 0, temp.length, System.nanoTime() / 1000, 0);
+                    Log.e(TAG, "run: " + result);
                 }
 
                 MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
@@ -103,7 +107,7 @@ public class SecondActivity extends AppCompatActivity {
 //                bufferInfo.presentationTimeUs += 1000 * 1000 / 30;
                 int outIndex;
                 do {
-                    outIndex = mediaCodec.dequeueOutputBuffer(bufferInfo, 0);
+                    outIndex = mediaCodec.dequeueOutputBuffer(bufferInfo, 10000);
                     if (outIndex >= 0) {
                         mediaCodec.releaseOutputBuffer(outIndex, true);
                         Log.e(TAG, "run: " + outIndex);

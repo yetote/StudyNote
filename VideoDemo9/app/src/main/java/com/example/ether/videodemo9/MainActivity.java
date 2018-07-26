@@ -69,10 +69,10 @@ public class MainActivity extends AppCompatActivity {
     private void initEncode(int width, int height) {
         try {
             mediaCodec = MediaCodec.createEncoderByType(MIME_TYPE);
-            MediaFormat format = MediaFormat.createVideoFormat("video/avc", 400, 300);
+            MediaFormat format = MediaFormat.createVideoFormat("video/avc", 1280, 960);
 //            byte[] csd_info = {0, 0, 0, 1, 103, 100, 0, 40, -84, 52, -59, 1, -32, 17, 31, 120, 11, 80, 16, 16, 31, 0, 0, 3, 3, -23, 0, 0, -22, 96, -108, 0, 0, 0, 1, 104, -18, 60, -128};
 //            format.setByteBuffer("csd-0", ByteBuffer.wrap(csd_info));
-            format.setInteger(MediaFormat.KEY_BIT_RATE, 800 * 600 * 5);
+            format.setInteger(MediaFormat.KEY_BIT_RATE, 1280 * 960 * 5);
             format.setInteger(MediaFormat.KEY_FRAME_RATE, 30);
             format.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible);
             format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 5);
@@ -167,7 +167,7 @@ public class MainActivity extends AppCompatActivity {
             public void surfaceCreated(SurfaceHolder holder) {
                 initEncode(1280/2, 720/2);
 
-                imageReader = ImageReader.newInstance(surfaceView.getWidth()/2, surfaceView.getHeight()/2, ImageFormat.YUV_420_888, 1);
+                imageReader = ImageReader.newInstance(1280, 960, ImageFormat.YUV_420_888, 1);
                 imageReader.setOnImageAvailableListener(reader -> {
                     Image image = reader.acquireNextImage();
                     i++;

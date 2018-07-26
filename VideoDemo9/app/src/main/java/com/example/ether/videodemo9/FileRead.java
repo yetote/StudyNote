@@ -37,33 +37,48 @@ public class FileRead {
         try {
             if (count >= channel.size()) {
                 Log.e(TAG, "readData: " + "数据全部读取");
-                return -1;
+                return 0;
             }
             channel.position(count);
+            Log.e(TAG, "readData: count" + count + "\n" + "size" + size);
             int result = channel.read(buffer);
             Log.e(TAG, "readData: " + channel.size());
             if (result == -1) {
                 Log.e(TAG, "readData: " + "数据全部读取");
-                return -1;
+                return 0;
             }
             buffer.flip();
             byte[] temp = new byte[size];
-            buffer.get(temp);
-
-            firstIndex = findHead(temp, firstIndex);
-            if (firstIndex != -1) {
-                secondIndex = findHead(temp, firstIndex);
-                if (secondIndex != -1) {
-                    System.arraycopy(temp, firstIndex, data, 0, secondIndex - firstIndex);
-                }
+            for (int i = 0; i < buffer.limit(); i++) {
+                temp[i] = buffer.get();
             }
 
+            int index = findHead(temp, firstIndex);
+            if (index != -1) {
+                firstIndex = index;
+                int secIndex = findHead(temp, firstIndex + 1024);
+                if (secIndex != -1) {
+                    secondIndex = secIndex;
+                    System.arraycopy(temp, firstIndex, data, 0, secondIndex - firstIndex);
+                    Log.e(TAG, "readData: fps" + (secondIndex - firstIndex));
+                    count += secondIndex;
+                    Log.e(TAG, "readData: " + "找到帧头");
+                    buffer.clear();
+                    return secondIndex - firstIndex;
+                } else {
+                    Log.e(TAG, "readData: " + "未找到第二帧头，copy数组");
+                    count += firstIndex;
+                    size = size << 1;
+                }
+            } else {
+                Log.e(TAG, "readData: " + "未找到第一帧帧头");
+                size = size << 1;
+            }
             buffer.clear();
         } catch (IOException e) {
             e.printStackTrace();
         }
-        count += size;
-        return null;
+        return 0;
     }
 
     /**
@@ -71,14 +86,29 @@ public class FileRead {
      * @param offset i帧或p帧的索引
      */
     int findHead(byte data[], int offset) {
+        Log.e(TAG, "findHead: " + offset + "\n" + data.length);
         for (int i = offset; i < data.length; i++) {
             //00 00 00 01 x
-            if (data[i] == 0x00 && data[i + 1] == 0x00 && data[i + 2] == 0x00 && data[i + 3] == 0x01 && isVideoFrameHeadType(data[i + 4])) {
-
-                return i;
+            if (i + 4 > data.length) {
+                return -1;
+            } else {
+                if (data[i] == 0x00
+                        && data[i + 1] == 0x00
+                        && data[i + 2] == 0x00
+                        && data[i + 3] == 0x01
+                        && isVideoFrameHeadType(data[i + 4])) {
+                    return i;
+                }
             }
-            if (data[i] == 0x00 && data[i + 1] == 0x00 && data[i + 2] == 0x00 && isVideoFrameHeadType(data[i + 3])) {
-                return i;
+            if (i + 3 > data.length) {
+                return -1;
+            } else {
+                if (data[i] == 0x00
+                        && data[i + 1] == 0x00
+                        && data[i + 2] == 0x00
+                        && isVideoFrameHeadType(data[i + 3])) {
+                    return i;
+                }
             }
             //00 00 01 x
         }
