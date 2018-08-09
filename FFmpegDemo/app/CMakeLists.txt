@@ -1,7 +1,7 @@
 
 
 cmake_minimum_required(VERSION 3.4.1)
-set(lib_src_DIR ${CMAKE_SOURCE_DIR}/src/main/jniLibs/armeabi-v7a)
+set(lib_src_DIR ${CMAKE_SOURCE_DIR}/build/intermediates/cmake/debug/obj/${ANDROID_ABI})
 
 add_library( # Sets the name of the library.
              native-lib
@@ -10,51 +10,51 @@ add_library( # Sets the name of the library.
              SHARED
 
              # Provides a relative path to your source file(s).
-             src/main/cpp/native-lib.cpp )
+             src/main/cpp/native-lib.cpp
+              src/main/cpp/FFmpegTest.cpp)
 
 add_library( avutil-lib
              STATIC
              IMPORTED)
 set_target_properties( avutil-lib
                        PROPERTIES IMPORTED_LOCATION
-                       ${lib_src_DIR}/libavutil.a )
+                       ${lib_src_DIR}/libavutil.so )
  add_library( swresample-lib
               STATIC
               IMPORTED)
  set_target_properties( swresample-lib
                         PROPERTIES IMPORTED_LOCATION
-                        ${lib_src_DIR}/libswresample.a )
+                        ${lib_src_DIR}/libswresample.so )
  add_library( avcodec-lib
               STATIC
               IMPORTED)
  set_target_properties( avcodec-lib
                         PROPERTIES IMPORTED_LOCATION
-                        ${lib_src_DIR}/libavcodec.a )
+                        ${lib_src_DIR}/libavcodec.so )
  add_library( avfilter-lib
               STATIC
               IMPORTED)
  set_target_properties( avfilter-lib
                         PROPERTIES IMPORTED_LOCATION
-                        ${lib_src_DIR}/libavfilter.a )
+                        ${lib_src_DIR}/libavfilter.so )
  add_library( swscale-lib
                STATIC
                IMPORTED)
  set_target_properties( swscale-lib
                          PROPERTIES IMPORTED_LOCATION
-                         ${lib_src_DIR}/libswscale.a )
- add_library( avdevice-lib
-              STATIC
-              IMPORTED)
- set_target_properties( avdevice-lib
-                        PROPERTIES IMPORTED_LOCATION
-                        ${lib_src_DIR}/libavdevice.a )
+                         ${lib_src_DIR}/libswscale.so )
  add_library( avformat-lib
               STATIC
               IMPORTED)
  set_target_properties( avformat-lib
                         PROPERTIES IMPORTED_LOCATION
-                        ${lib_src_DIR}/libavformat.a )
-
+                        ${lib_src_DIR}/libavformat.so )
+add_library( avdevice-lib
+              STATIC
+              IMPORTED)
+ set_target_properties( avdevice-lib
+                        PROPERTIES IMPORTED_LOCATION
+                        ${lib_src_DIR}/libavdevice.so )
 
 
 # Searches for a specified prebuilt library and stores the path as a
@@ -62,7 +62,9 @@ set_target_properties( avutil-lib
 # default, you only need to specify the name of the public NDK library
 # you want to add. CMake verifies that the library exists before
 # completing its build.
-include_directories(${CMAKE_SOURCE_DIR}/src/main/jni/include)
+
+include_directories(${CMAKE_SOURCE_DIR}/src/main/jni/includes/${ANDROID_ABI})
+
 find_library( # Sets the name of the path variable.
               log-lib
 
@@ -81,8 +83,8 @@ target_link_libraries( # Specifies the target library.
                        avcodec-lib
                        avfilter-lib
                        swscale-lib
-                       avdevice-lib
                        avformat-lib
+                       avdevice-lib
                        # Links the target library to the log library
                        # included in the NDK.
                        ${log-lib} )
