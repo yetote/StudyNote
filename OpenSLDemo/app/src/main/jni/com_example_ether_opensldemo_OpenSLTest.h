@@ -21,7 +21,7 @@ JNIEXPORT jint JNICALL Java_com_example_ether_opensldemo_OpenSLTest_create
  * Signature: ()V
  */
 JNIEXPORT void JNICALL Java_com_example_ether_opensldemo_OpenSLTest_play
-  (JNIEnv *, jobject);
+  (JNIEnv *, jobject,jstring);
 
 #ifdef __cplusplus
 }

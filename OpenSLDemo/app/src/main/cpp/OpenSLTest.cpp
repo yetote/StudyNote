@@ -4,7 +4,7 @@
 
 #include <jni.h>
 #include <SLES/OpenSLES.h>
-#include "com_example_ether_opensldemo_OpenSLTest.h"
+#include "../jni/com_example_ether_opensldemo_OpenSLTest.h"
 #include "../jni/OpenSL.h"
 #include <android/log.h>
 #include <stdio.h>
@@ -30,15 +30,15 @@ void pcmCall(SLAndroidSimpleBufferQueueItf bf, void *context) {
     FILE *fp = NULL;
     char *buf = NULL;
     if (!buf) {
-        buf = new char[1024 * 1024];
+        buf = new char[44100 * 2 * 2];
     }
     if (!fp) {
         fp = fopen(pcmPath, "rb");
     }
     if (!fp) return;
     if (feof(fp) == 0) {
-        int len = fread(buf, 1, 1024, fp);
-        if (bf > 0) {
+        int len = fread(buf, 44100 * 2 * 2, 1, fp);
+        if (len > 0) {
             (*bf)->Enqueue(bf, buf, len);
         }
     }
@@ -51,9 +51,9 @@ JNIEXPORT jint JNICALL Java_com_example_ether_opensldemo_OpenSLTest_create
 }
 
 JNIEXPORT void JNICALL Java_com_example_ether_opensldemo_OpenSLTest_play
-        (JNIEnv *env, jobject, jstring pcmPath) {
+        (JNIEnv *env, jobject, jstring pcmPathParam) {
     SLEngineItf engine = createEngine();
-     pcmPath= env->GetStringUTFChars(pcmPath, NULL);
+    pcmPath = env->GetStringUTFChars(pcmPathParam, NULL);
     if (engine == NULL) LOGE("创建引擎失败");
     SLObjectItf mix = NULL;
     SLresult result = 0;
@@ -65,7 +65,7 @@ JNIEXPORT void JNICALL Java_com_example_ether_opensldemo_OpenSLTest_play
     SLDataLocator_OutputMix outMix = {SL_DATALOCATOR_OUTPUTMIX, mix};
     SLDataSink audioSink = {&outMix, 0};
 
-    SLDataLocator_AndroidBufferQueue que = {SL_DATALOCATOR_ANDROIDBUFFERQUEUE, 10};
+    SLDataLocator_AndroidSimpleBufferQueue que = {SL_DATALOCATOR_ANDROIDSIMPLEBUFFERQUEUE, 10};
     SLDataFormat_PCM pcmInfo = {
             SL_DATAFORMAT_PCM,
             2,
@@ -80,12 +80,13 @@ JNIEXPORT void JNICALL Java_com_example_ether_opensldemo_OpenSLTest_play
     SLObjectItf player = NULL;
     SLPlayItf playItf = NULL;
     SLAndroidSimpleBufferQueueItf pcmQueue = NULL;
-    const SLInterfaceID ids[] = {SL_IID_BUFFERQUEUE};
-    const SLboolean req[] = {SL_BOOLEAN_TRUE};
+    const SLInterfaceID ids[1] = {SL_IID_BUFFERQUEUE};
+    const SLboolean req[1] = {SL_BOOLEAN_TRUE};
     result = (*engine)->CreateAudioPlayer(engine, &player, &source, &audioSink,
                                           sizeof(ids) / sizeof(SLInterfaceID), ids, req);
     if (result != SL_RESULT_SUCCESS) LOGE("创建播放器失败");
     result = (*player)->Realize(player, SL_BOOLEAN_FALSE);
+    result = (*player)->GetInterface(player, SL_IID_PLAY, &playItf);
     result = (*player)->GetInterface(player, SL_IID_BUFFERQUEUE, &pcmQueue);
     (*pcmQueue)->RegisterCallback(pcmQueue, pcmCall, 0);
     (*playItf)->SetPlayState(playItf, SL_PLAYSTATE_PLAYING);
