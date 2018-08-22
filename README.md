@@ -41,7 +41,8 @@ Android学习笔记
    - [ ] 设计模式思想和原则
    - [ ] 24种常用设计模式
 - [ ] NDK和音视频处理
-   - [ ] C语言
+   - [x] C++ 
+       - [x] [c++笔记(待补充)](https://github.com/yetote/StudyNote/blob/master/c++笔记(待补充).md)
    - [x] AS配置与使用ndk
        - [x] r16b之前AS配置与使用
        - [ ] r16b之后AS配置与使用
