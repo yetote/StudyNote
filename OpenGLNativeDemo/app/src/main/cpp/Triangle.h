@@ -20,7 +20,7 @@ public:
 
     void initVertex();
 
-    void initGL();
+    void initGL(const char *vertexShaderCode, const char *fragmentShaderCode);
 
     void draw(float mvpMatrix[]);
 

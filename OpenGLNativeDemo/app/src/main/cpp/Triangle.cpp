@@ -4,32 +4,57 @@
 
 #include <cmath>
 #include "Triangle.h"
-#include <GLES2/>
+#include "GLUtil.h"
+#include <GLES2/gl2.h>
+
 void Triangle::initVertex() {
-    vertexArray = new GLfloat[5 * 8];
-    int i = 0, j = 0;
-    vertexArray[i++]=0;
-    vertexArray[i++]=0;
+    vertexArray = new GLfloat[15]{
+            -0.5f, 0.0f, 1.0f, 0.0f, 0.0f,
+            0.0f, 0.5f, 0.0f, 1.0f, 0.0f,
+            0.5f, 0.0f, 0.0f, 0.0f, 1.0f
 
-    vertexArray[i++]=1;
-    vertexArray[i++]=1;
-    vertexArray[i++]=1;
-
-    for (int angle = 0; angle <= 360; angle += 60) {
-        vertexArray[i++] = (GLfloat) (cos(M_PI * angle / 180));
-        vertexArray[i++] = (GLfloat) (sin(M_PI * angle / 180));
-
-        vertexArray[i++] = 1;
-        vertexArray[i++] = 0;
-        vertexArray[i++] = 0;
-    }    
+    };
+//    int i = 0, j = 0;
+//    vertexArray[i++] = 0;
+//    vertexArray[i++] = 0;
+//
+//    vertexArray[i++] = 1;
+//    vertexArray[i++] = 1;
+//    vertexArray[i++] = 1;
+//
+//    for (int angle = 0; angle <= 360; angle += 60) {
+//        vertexArray[i++] = (GLfloat) (cos(M_PI * angle / 180));
+//        vertexArray[i++] = (GLfloat) (sin(M_PI * angle / 180));
+//
+//        vertexArray[i++] = 1;
+//        vertexArray[i++] = 0;
+//        vertexArray[i++] = 0;
+//    }
 
 }
 
-void Triangle::initGL() {
+void Triangle::initGL(const char *vertexShaderCode, const char *fragmentShaderCode) {
+    program = GLUtil::createProgram(vertexShaderCode, fragmentShaderCode);
+    uMVPMatrix = glGetUniformLocation(program, "uMVPMatrix");
+    aPosition = glGetAttribLocation(program, "aPosition");
+    aColor = glGetAttribLocation(program, "aColor");
 
 }
 
 void Triangle::draw(float *mvpMatrix) {
+    glUseProgram(program);
+    glUniformMatrix4fv(uMVPMatrix, 1, GL_FALSE, mvpMatrix);
+    glVertexAttribPointer(aPosition, 2, GL_FLOAT, GL_FALSE, 5 * 4, vertexArray);
+    glVertexAttribPointer(aColor, 3, GL_FLOAT, GL_FALSE, 5 * 4, vertexArray);
+    glEnableVertexAttribArray(aPosition);
+    glEnableVertexAttribArray(aColor);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, 3);
+}
 
+Triangle::Triangle() {
+    initVertex();
+}
+
+Triangle::~Triangle() {
+    delete[] vertexArray;
 }

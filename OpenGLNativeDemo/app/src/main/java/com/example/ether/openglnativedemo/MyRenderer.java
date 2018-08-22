@@ -9,6 +9,10 @@ import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
 public class MyRenderer implements GLSurfaceView.Renderer {
+    static {
+        System.loadLibrary("native-lib");
+    }
+
     private Context context;
     private float angleX, angleY;
 
