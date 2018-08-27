@@ -9,6 +9,7 @@ import static android.opengl.GLES20.GL_VALIDATE_STATUS;
 import static android.opengl.GLES20.glAttachShader;
 import static android.opengl.GLES20.glCompileShader;
 import static android.opengl.GLES20.glCreateProgram;
+import static android.opengl.GLES20.glCreateShader;
 import static android.opengl.GLES20.glDeleteProgram;
 import static android.opengl.GLES20.glDeleteShader;
 import static android.opengl.GLES20.glGetProgramInfoLog;
@@ -18,7 +19,6 @@ import static android.opengl.GLES20.glGetShaderiv;
 import static android.opengl.GLES20.glLinkProgram;
 import static android.opengl.GLES20.glShaderSource;
 import static android.opengl.GLES20.glValidateProgram;
-import static android.opengl.GLES20.glCreateShader;
 
 
 public class ShaderHelper {
@@ -60,7 +60,7 @@ public class ShaderHelper {
         glAttachShader(program, vertexShaderCode);
         glAttachShader(program, fragmentShaderCode);
         glLinkProgram(program);
-        final int programStatus[] = new int[1];
+        final int[] programStatus = new int[1];
         glGetProgramiv(program, GL_LINK_STATUS, programStatus, 0);
         Log.e(TAG, "linkProgram: " + glGetShaderInfoLog(program));
         if (programStatus[0] == 0) {

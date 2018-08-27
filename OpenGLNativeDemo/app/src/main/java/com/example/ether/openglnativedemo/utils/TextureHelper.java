@@ -15,7 +15,6 @@ import static android.opengl.GLES20.glDeleteTextures;
 import static android.opengl.GLES20.glGenTextures;
 import static android.opengl.GLES20.glGenerateMipmap;
 import static android.opengl.GLES20.glTexParameteri;
-import static android.opengl.GLES20.glTexParameteriv;
 import static android.opengl.GLUtils.texImage2D;
 
 public class TextureHelper {

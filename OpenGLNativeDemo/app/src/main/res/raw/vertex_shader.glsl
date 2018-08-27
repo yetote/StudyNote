@@ -1,9 +1,10 @@
-uniform mat4 uMatrix;
-attribute vec4 aPosition;
-attribute vec4 aColor;
-varying vec4 vColor;
+uniform mat4 u_Matrix;
+attribute vec4 a_Position;
+attribute vec4 a_Color;
+varying vec4 v_Color;
 
 void main() {
-   vColor=aColor;
-   gl_Position=aPosition;
+   v_Color=a_Color;
+   gl_Position=a_Position;
+   gl_PointSize=20.0;
 }
