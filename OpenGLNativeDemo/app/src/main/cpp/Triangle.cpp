@@ -36,14 +36,13 @@ void Triangle::initVertex() {
 void Triangle::initGL(const char *vertexShaderCode, const char *fragmentShaderCode) {
     program = GLUtil::createProgram(vertexShaderCode, fragmentShaderCode);
     uMVPMatrix = glGetUniformLocation(program, "uMVPMatrix");
-    aPosition = glGetAttribLocation(program, "aPosition");
-    aColor = glGetAttribLocation(program, "aColor");
+    aPosition = glGetAttribLocation(program, "a_Position");
+    aColor = glGetAttribLocation(program, "a_Color");
 
 }
 
-void Triangle::draw(float *mvpMatrix) {
+void Triangle::draw() {
     glUseProgram(program);
-    glUniformMatrix4fv(uMVPMatrix, 1, GL_FALSE, mvpMatrix);
     glVertexAttribPointer(aPosition, 2, GL_FLOAT, GL_FALSE, 5 * 4, vertexArray);
     glVertexAttribPointer(aColor, 3, GL_FLOAT, GL_FALSE, 5 * 4, vertexArray);
     glEnableVertexAttribArray(aPosition);

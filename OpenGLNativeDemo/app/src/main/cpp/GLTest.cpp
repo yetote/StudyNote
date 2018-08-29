@@ -27,7 +27,7 @@ JNIEXPORT void JNICALL Java_com_example_ether_openglnativedemo_MyRenderer_draw
     glClear(GL_COLOR_BUFFER_BIT);
     glm::mat4 mvpMatrix = projection * view;
     float *mvp = glm::value_ptr(mvpMatrix);
-    triangle.draw(mvp);
+    triangle.draw();
 }
 
 

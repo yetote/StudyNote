@@ -13,6 +13,8 @@ import android.view.Surface;
 import com.example.ether.openglnativedemo.objects.Triangle;
 import com.example.ether.openglnativedemo.programs.TriangleProgram;
 
+import java.util.Arrays;
+
 import static android.opengl.EGL14.EGL_ALPHA_SIZE;
 import static android.opengl.EGL14.EGL_BLUE_SIZE;
 import static android.opengl.EGL14.EGL_BUFFER_SIZE;
@@ -32,6 +34,7 @@ import static android.opengl.EGL14.eglCreateContext;
 import static android.opengl.EGL14.eglCreateWindowSurface;
 import static android.opengl.EGL14.eglDestroyContext;
 import static android.opengl.EGL14.eglDestroySurface;
+import static android.opengl.EGL14.eglGetConfigs;
 import static android.opengl.EGL14.eglGetDisplay;
 import static android.opengl.EGL14.eglGetError;
 import static android.opengl.EGL14.eglInitialize;
@@ -49,13 +52,10 @@ public class EGLRenderer extends HandlerThread {
     private EGLDisplay eglDisplay = EGL_NO_DISPLAY;
     private EGLContext eglContext = EGL_NO_CONTEXT;
 
-    private TriangleProgram program;
-    private int vPosition;
-    private int uColor;
     private static final String TAG = "EGLRenderer";
     private Context context;
 
-    public EGLRenderer(Context context) {
+    EGLRenderer(Context context) {
         super("GLRenderer");
         this.context = context;
     }
@@ -63,7 +63,7 @@ public class EGLRenderer extends HandlerThread {
     /**
      * 创建egl
      */
-    void createEGL() {
+    private void createEGL() {
         //初始化显示设备
         eglDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
         int[] version = new int[2];
@@ -100,7 +100,7 @@ public class EGLRenderer extends HandlerThread {
     /**
      * 销毁EGL环境
      */
-    void destroyEGL() {
+    private void destroyEGL() {
         eglDestroyContext(eglDisplay, eglContext);
         eglContext = EGL_NO_CONTEXT;
         eglDisplay = EGL_NO_DISPLAY;
@@ -109,21 +109,13 @@ public class EGLRenderer extends HandlerThread {
     @Override
     public synchronized void start() {
         super.start();
-        new Handler(getLooper()).post(new Runnable() {
-            @Override
-            public void run() {
-                createEGL();
-            }
-        });
+        new Handler(getLooper()).post(this::createEGL);
     }
 
     void release() {
-        new Handler(getLooper()).post(new Runnable() {
-            @Override
-            public void run() {
-                destroyEGL();
-                quit();
-            }
+        new Handler(getLooper()).post(() -> {
+            destroyEGL();
+            quit();
         });
     }
 
@@ -131,7 +123,7 @@ public class EGLRenderer extends HandlerThread {
         int[] surfaceAttributes = {EGL_NONE};
         EGLSurface eglSurface = eglCreateWindowSurface(eglDisplay, eglConfig, surface, surfaceAttributes, 0);
         eglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglContext);
-        program = new TriangleProgram(context);
+        TriangleProgram program = new TriangleProgram(context);
         Triangle triangle = new Triangle();
         glClearColor(1f, 1f, 0f, 0f);
         glViewport(0, 0, width, height);

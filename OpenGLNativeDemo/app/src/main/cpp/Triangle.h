@@ -22,7 +22,7 @@ public:
 
     void initGL(const char *vertexShaderCode, const char *fragmentShaderCode);
 
-    void draw(float mvpMatrix[]);
+    void draw();
 
     ~Triangle();
 };
