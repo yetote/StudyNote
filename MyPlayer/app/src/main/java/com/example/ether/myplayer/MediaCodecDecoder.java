@@ -327,7 +327,6 @@ public class MediaCodecDecoder implements SurfaceTexture.OnFrameAvailableListene
             Log.e(TAG, "Unexpected result from decoder.dequeueOutputBuffer: " + decoderStatus);
             return ERROR_FAIL;
         } else { // decoderStatus >= 0
-
             if ((bufferInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
                 Log.d(TAG, "Output EOS");
                 isSawOutputEOS = true;
