@@ -2030,6 +2030,7 @@ AVOutputFormat *av_oformat_next(const AVOutputFormat *f);
 
 /**
  * Allocate an AVFormatContext.
+ * 分配一个AVFormatContext上下文
  * avformat_free_context() can be used to free the context and everything
  * allocated by the framework within it.
  */

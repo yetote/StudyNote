@@ -20,8 +20,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private String ioPath;
-    private String outputPath;
-    private String inputPath;
+    private String videoOutputPath;
+    private String videoInputPath;
+    private String audioOutputPath;
+    private String audioInputPath;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -30,13 +32,15 @@ public class MainActivity extends AppCompatActivity {
 
         ioPath = this.getExternalCacheDir().getPath() + "/test.txt";
 
-        outputPath = this.getExternalCacheDir().getPath() + "/test.yuv";
-        inputPath = this.getExternalCacheDir().getPath() + "/test.mp4";
+        videoOutputPath = this.getExternalCacheDir().getPath() + "/test.yuv";
+        videoInputPath = this.getExternalCacheDir().getPath() + "/test.mp4";
+        audioOutputPath = this.getExternalCacheDir().getPath() + "/test.pcm";
+        audioInputPath = this.getExternalCacheDir().getPath() + "/test.mp3";
 //        if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
 //            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, PERMISSION_WRITE_CODE);
 //        } else {
 //            ioTest(ioPath);
-            decodeVideo(inputPath, outputPath);
+        decodeAudio(audioInputPath, audioOutputPath);
 //        }
     }
 

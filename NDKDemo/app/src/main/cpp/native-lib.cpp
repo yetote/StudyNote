@@ -1,16 +1,16 @@
 #include <jni.h>
-#include <string>
 #include <android/log.h>
 
 extern "C" {
-#include "libavcodec/avcodec.h"
-#include "libavformat/avformat.h"
-#include "libavutil/imgutils.h"
-#include "libswscale/swscale.h"
+#include <libswresample/swresample.h>
+#include <libavformat/avformat.h>
+#include <libavutil/imgutils.h>
+#include <libswscale/swscale.h>
 }
+
 #define LOGI(FORMAT, ...) __android_log_print(ANDROID_LOG_INFO,"wuhuannan",FORMAT,##__VA_ARGS__);
 #define LOGE(FORMAT, ...) __android_log_print(ANDROID_LOG_ERROR,"wuhuannan",FORMAT,##__VA_ARGS__);
-
+#define MAX_AUDIO_FRAME_SIZE 44100*4
 extern "C"
 JNIEXPORT jint JNICALL
 Java_com_example_ether_ndkdemo_MainActivity_add(JNIEnv *env, jobject instance, jint a, jint b) {
@@ -184,8 +184,122 @@ Java_com_example_ether_ndkdemo_MainActivity_decodeAudio(JNIEnv *env, jobject ins
                                                         jstring inputPath_, jstring outputPath_) {
     const char *inputPath = env->GetStringUTFChars(inputPath_, 0);
     const char *outputPath = env->GetStringUTFChars(outputPath_, 0);
+    //初始化组件
+    av_register_all();
 
+    //打开音视频文件信息
+    AVFormatContext *pFormatCtx = avformat_alloc_context();
 
+    if (avformat_open_input(&pFormatCtx, inputPath, NULL, NULL) != 0) {
+        LOGE("无法打开音频文件");
+        return;
+    }
+    if (avformat_find_stream_info(pFormatCtx, NULL) < 0) {
+        LOGE("无法获取输入文件信息");
+    }
+    int audio_stream_idx = -1;
+    for (int i = 0; i < pFormatCtx->nb_streams; ++i) {
+        if (pFormatCtx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO) {
+            audio_stream_idx = i;
+            break;
+        }
+    }
+    if (audio_stream_idx == -1) {
+        LOGE("寻找音频流失败");
+    }
+
+    AVStream *pStream = pFormatCtx->streams[audio_stream_idx];
+    AVCodec *pCodec = avcodec_find_decoder(pStream->codecpar->codec_id);
+    if (pCodec == NULL) {
+        LOGE("无法获取解码器");
+        return;
+    }
+    AVCodecContext *pCodecCtx = avcodec_alloc_context3(pCodec);
+    if (avcodec_open2(pCodecCtx, pCodec, NULL) < 0) {
+        LOGE("无法打开解码器");
+        return;
+    }
+
+    //分配内存
+    AVPacket *pPacket = static_cast<AVPacket *>(av_malloc(sizeof(AVPacket)));
+    AVFrame *pFrame = av_frame_alloc();
+    SwrContext *pSwrCtx = swr_alloc();
+    //采样格式
+    enum AVSampleFormat inSampleFmt = pCodecCtx->sample_fmt;
+    enum AVSampleFormat outSampleFmt = AV_SAMPLE_FMT_S16;
+    //采样率
+    int inSampleRate = pCodecCtx->sample_rate;
+    int outSampleRate = 44100;
+    //声道类别
+    uint64_t inSampleChannel = pCodecCtx->channel_layout;
+    uint64_t outSampleChannel = AV_CH_LAYOUT_STEREO;
+    //添加配置
+    swr_alloc_set_opts(pSwrCtx,
+                       outSampleChannel,
+                       outSampleFmt,
+                       outSampleRate,
+                       inSampleChannel,
+                       inSampleFmt,
+                       inSampleRate,
+                       0,
+                       NULL);
+    swr_init(pSwrCtx);
+    int outChannelNum = av_get_channel_layout_nb_channels(outSampleChannel);
+    int ret = -1;
+    int dataSize;
+    FILE *outputFile = fopen(outputPath, "wb+");
+    AVFrame *pEncodeFrame;
+    pEncodeFrame = av_frame_alloc();
+    uint8_t *outBuffer = static_cast<uint8_t *>(av_malloc(MAX_AUDIO_FRAME_SIZE));
+    while (av_read_frame(pFormatCtx, pPacket) >= 0) {
+        if (pPacket->stream_index == audio_stream_idx) {
+            ret = avcodec_send_packet(pCodecCtx, pPacket);
+            while (ret >= 0) {
+                ret = avcodec_receive_frame(pCodecCtx, pEncodeFrame);
+                LOGE("%d", ret);
+                if (ret == AVERROR(EAGAIN)) {
+                    LOGE("%s", "读取解码数据失败");
+                    break;
+                } else if (ret == AVERROR_EOF) {
+                    LOGE("%s", "解码完成");
+                    fclose(outputFile);
+                    break;
+                } else if (ret < 0) {
+                    LOGE("%s", "解码出错");
+                    break;
+                }
+//                swr_convert(pSwrCtx,
+//                            &outBuffer,
+//                            MAX_AUDIO_FRAME_SIZE,
+//                           (pEncodeFrame->data),
+//                            pEncodeFrame->nb_samples);
+//                int outBufferSize = av_samples_get_buffer_size(NULL, outChannelNum,
+//                                                               pEncodeFrame->nb_samples,
+//                                                               outSampleFmt, 1);
+//                fwrite(outBuffer, 1, outBufferSize, outputFile);
+                dataSize = av_get_bytes_per_sample(pCodecCtx->sample_fmt);
+                if (dataSize < 0) {
+                    LOGE("获取数据大小失败");
+                    break;
+                }
+                for (int i = 0; i < pEncodeFrame->nb_samples; ++i) {
+                    for (int ch = 0; ch < pCodecCtx->channels; ++ch) {
+                        fwrite(pEncodeFrame->data[ch] + dataSize * i, 1, dataSize, outputFile);
+                    }
+                }
+            }
+        }
+
+    }
+    //释放资源
+    av_packet_unref(pPacket);
+    fclose(outputFile);
+
+    av_frame_free(&pFrame);
+    av_frame_free(&pEncodeFrame);
+    swr_free(&pSwrCtx);
+    avcodec_free_context(&pCodecCtx);
+    avformat_free_context(pFormatCtx);
     env->ReleaseStringUTFChars(inputPath_, inputPath);
     env->ReleaseStringUTFChars(outputPath_, outputPath);
 }
