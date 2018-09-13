@@ -235,12 +235,12 @@ int swr_is_initialized(struct SwrContext *s);
  * on the allocated context.
  *
  * @param s               existing Swr context if available, or NULL if not
- * @param out_ch_layout   output channel layout (AV_CH_LAYOUT_*)
- * @param out_sample_fmt  output sample format (AV_SAMPLE_FMT_*).
- * @param out_sample_rate output sample rate (frequency in Hz)
- * @param in_ch_layout    input channel layout (AV_CH_LAYOUT_*)
- * @param in_sample_fmt   input sample format (AV_SAMPLE_FMT_*).
- * @param in_sample_rate  input sample rate (frequency in Hz)
+ * @param out_ch_layout   output channel layout (AV_CH_LAYOUT_*) 输出声道布局
+ * @param out_sample_fmt  output sample format (AV_SAMPLE_FMT_*). 输出采样格式
+ * @param out_sample_rate output sample rate (frequency in Hz) 输出采样率
+ * @param in_ch_layout    input channel layout (AV_CH_LAYOUT_*) 输入声道布局
+ * @param in_sample_fmt   input sample format (AV_SAMPLE_FMT_*). 输入采样格式
+ * @param in_sample_rate  input sample rate (frequency in Hz) 输入采样率
  * @param log_offset      logging level offset
  * @param log_ctx         parent logging context, can be NULL
  *

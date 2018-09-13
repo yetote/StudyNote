@@ -8,3 +8,4 @@
 /app/src/androidTest
 /app/src/test
 .externalNativeBuild
+/app/build/generated
