@@ -215,11 +215,12 @@ Java_com_example_ether_ndkdemo_MainActivity_decodeAudio(JNIEnv *env, jobject ins
         return;
     }
     AVCodecContext *pCodecCtx = avcodec_alloc_context3(pCodec);
+    //将视频流信息复制到编解码的上下文
+    avcodec_parameters_to_context(pCodecCtx, pStream->codecpar);
     if (avcodec_open2(pCodecCtx, pCodec, NULL) < 0) {
         LOGE("无法打开解码器");
         return;
     }
-
     //分配内存
     AVPacket *pPacket = static_cast<AVPacket *>(av_malloc(sizeof(AVPacket)));
     AVFrame *pFrame = av_frame_alloc();
@@ -268,31 +269,32 @@ Java_com_example_ether_ndkdemo_MainActivity_decodeAudio(JNIEnv *env, jobject ins
                     LOGE("%s", "解码出错");
                     break;
                 }
-//                swr_convert(pSwrCtx,
-//                            &outBuffer,
-//                            MAX_AUDIO_FRAME_SIZE,
-//                           (pEncodeFrame->data),
-//                            pEncodeFrame->nb_samples);
-//                int outBufferSize = av_samples_get_buffer_size(NULL, outChannelNum,
-//                                                               pEncodeFrame->nb_samples,
-//                                                               outSampleFmt, 1);
-//                fwrite(outBuffer, 1, outBufferSize, outputFile);
-                dataSize = av_get_bytes_per_sample(pCodecCtx->sample_fmt);
-                if (dataSize < 0) {
-                    LOGE("获取数据大小失败");
-                    break;
-                }
-                for (int i = 0; i < pEncodeFrame->nb_samples; ++i) {
-                    for (int ch = 0; ch < pCodecCtx->channels; ++ch) {
-                        fwrite(pEncodeFrame->data[ch] + dataSize * i, 1, dataSize, outputFile);
-                    }
-                }
+//               int  decodeSampleNum=av_rescale_rnd(swr_get_delay(pSwrCtx,inSampleRate)+);
+               int rst= swr_convert(pSwrCtx,
+                            &outBuffer,
+                            MAX_AUDIO_FRAME_SIZE,
+                            (const uint8_t **) (pEncodeFrame->data),
+                            pEncodeFrame->nb_samples);
+                int outBufferSize = av_samples_get_buffer_size(NULL, outChannelNum,
+                                                               rst,
+                                                               outSampleFmt, 1);
+                fwrite(outBuffer, 1, outBufferSize, outputFile);
+//                dataSize = av_get_bytes_per_sample(pCodecCtx->sample_fmt);
+//                if (dataSize < 0) {
+//                    LOGE("获取数据大小失败");
+//                    break;
+//                }
+//                for (int i = 0; i < pEncodeFrame->nb_samples; ++i) {
+//                    for (int ch = 0; ch < pCodecCtx->channels; ++ch) {
+//                        fwrite(pEncodeFrame->data[ch] + dataSize * i, 1, dataSize, outputFile);
+//                    }
+//                }
             }
         }
+        //释放资源
+        av_packet_unref(pPacket);
 
     }
-    //释放资源
-    av_packet_unref(pPacket);
     fclose(outputFile);
 
     av_frame_free(&pFrame);

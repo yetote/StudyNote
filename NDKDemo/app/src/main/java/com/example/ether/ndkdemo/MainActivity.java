@@ -35,7 +35,7 @@ public class MainActivity extends AppCompatActivity {
         videoOutputPath = this.getExternalCacheDir().getPath() + "/test.yuv";
         videoInputPath = this.getExternalCacheDir().getPath() + "/test.mp4";
         audioOutputPath = this.getExternalCacheDir().getPath() + "/test.pcm";
-        audioInputPath = this.getExternalCacheDir().getPath() + "/test.mp3";
+        audioInputPath = this.getExternalCacheDir().getPath() + "/sample.mp3";
 //        if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
 //            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, PERMISSION_WRITE_CODE);
 //        } else {
