@@ -8,6 +8,8 @@
 */gradlew
 */build/
 !*/build/intermediates/cmake/debug/obj/
-*/app/src/test
+*/app/src/test/
 *.externalNativeBuild
 *.jar
+*.pro
+*/androidTest/*
