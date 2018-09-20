@@ -1,5 +1,6 @@
 package com.example.openglplay.utils;
 
+import android.opengl.GLUtils;
 import android.util.Log;
 
 import java.nio.ByteBuffer;
@@ -16,6 +17,7 @@ import static android.opengl.GLES20.glDeleteTextures;
 import static android.opengl.GLES20.glGenTextures;
 import static android.opengl.GLES20.glTexImage2D;
 import static android.opengl.GLES20.glTexParameteri;
+import static android.opengl.GLES20.glTexSubImage2D;
 import static com.example.openglplay.utils.MathUtil.even;
 import static com.example.openglplay.utils.MathUtil.powerOfTwo;
 
@@ -31,8 +33,10 @@ import static com.example.openglplay.utils.MathUtil.powerOfTwo;
  */
 public class YUVHelper {
     private static final String TAG = "YUVHelper";
+    public static final int Y_TYPE = 0;
+    public static final int U_TYPE = 1, V_TYPE = 1;
 
-    public static int loadTexture(int w, int h, ByteBuffer bufferData) {
+    public static int loadTexture(int w, int h, ByteBuffer bufferData, int type) {
         final int[] textureObjectIds = new int[1];
 
         glGenTextures(1, textureObjectIds, 0);
@@ -52,7 +56,12 @@ public class YUVHelper {
         glBindTexture(GL_TEXTURE_2D, textureObjectIds[0]);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, w, h, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, bufferData);
+        if (type==Y_TYPE) {
+            glTexSubImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, w, h, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, bufferData);
+        }
+        if (type==1) {
+            glTexSubImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, w/2, h/2, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, bufferData);
+        }
         bufferData.clear();
         glBindTexture(GL_TEXTURE_2D, 0);
         return textureObjectIds[0];

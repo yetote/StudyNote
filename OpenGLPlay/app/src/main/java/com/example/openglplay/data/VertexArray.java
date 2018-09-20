@@ -43,6 +43,5 @@ private final FloatBuffer floatBuffer;
         floatBuffer.position(start);
         floatBuffer.put(vertexData, start, count);
         floatBuffer.position(0);
-
     }
 }
