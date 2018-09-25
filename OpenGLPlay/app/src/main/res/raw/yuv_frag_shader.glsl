@@ -5,14 +5,21 @@ uniform sampler2D u_TexV;
 varying vec2 v_TextureCoordinates;
 
 void main() {
-    vec3 yuv;
-    vec3 rgb;
-    yuv.r = texture2D(u_TexY, v_TextureCoordinates).r;
-    yuv.g = texture2D(u_TexU, v_TextureCoordinates).r - 0.5;
-    yuv.b = texture2D(u_TexV, v_TextureCoordinates).r - 0.5;
-    rgb = mat3(1.0, 1.0, 1.0,
-              0.0, -0.39465, 2.03211,
-              1.13983, -0.58060, 0.0) * yuv;
-    gl_FragColor = vec4(rgb, 1.0);
+    mediump float y;
+    mediump float u;
+    mediump float v;
+    lowp  vec3 rgb;
+//    mat3 convmatrix = mat3(vec3(1.164,  1.164, 1.164),
+//                              vec3(0.0,   -0.392, 2.017),
+//                              vec3(1.596, -0.813, 0.0));
+   mat3 convmatrix = mat3(vec3(1.164,  1.164, 1.164),
+                              vec3(0.0,   -0.392, 2.017),
+                              vec3(1.596, -0.813, 0.0));
 
+       y = (texture2D(u_TexY, v_TextureCoordinates).r - (16.0 / 255.0));
+       u = (texture2D(u_TexU, v_TextureCoordinates).r - (128.0 / 255.0));
+       v = (texture2D(u_TexV, v_TextureCoordinates).r - (128.0 / 255.0));
+
+       rgb = convmatrix * vec3(y, u, v);
+       gl_FragColor = vec4(rgb, 1.0);
 }

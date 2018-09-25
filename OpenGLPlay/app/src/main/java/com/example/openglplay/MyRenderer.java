@@ -5,15 +5,13 @@ import android.opengl.GLSurfaceView;
 import android.util.Log;
 
 import com.example.openglplay.objects.Rect;
-import com.example.openglplay.programs.RectProgram;
-import com.example.openglplay.utils.TextureHelper;
+import com.example.openglplay.programs.RectProgra;
 import com.example.openglplay.utils.YUVHelper;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
@@ -22,9 +20,13 @@ import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
 import static android.opengl.GLES20.GL_COLOR_BUFFER_BIT;
+import static android.opengl.GLES20.GL_DEPTH_BUFFER_BIT;
 import static android.opengl.GLES20.glClear;
 import static android.opengl.GLES20.glClearColor;
 import static android.opengl.GLES20.glViewport;
+import static com.example.openglplay.utils.YUVHelper.U_TYPE;
+import static com.example.openglplay.utils.YUVHelper.V_TYPE;
+import static com.example.openglplay.utils.YUVHelper.Y_TYPE;
 
 /**
  * @author yetote QQ:503779938
@@ -41,7 +43,7 @@ public class MyRenderer implements GLSurfaceView.Renderer {
     private final int uvSize;
     private Context context;
     Rect rect;
-    RectProgram program;
+    RectProgra program;
     int textureY, textureU, textureV;
     int w, h;
     private ByteBuffer yBuffer, uBuffer, vBuffer, yuvDataBuffer;
@@ -50,6 +52,7 @@ public class MyRenderer implements GLSurfaceView.Renderer {
     private FileChannel channel;
     private FileInputStream stream;
     int count = 0;
+    int textures[] = new int[3];
 
     public MyRenderer(Context context, int w, int h, String path) {
         this.context = context;
@@ -72,14 +75,17 @@ public class MyRenderer implements GLSurfaceView.Renderer {
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         }
+
     }
 
     @Override
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
-        glClearColor(0, 0, 0, 0);
+        glClearColor(1, 1, 1, 0);
         rect = new Rect();
-        program = new RectProgram(context);
-
+        program = new RectProgra(context);
+//        textureY=TextureHelper.loadTexture(context,R.drawable.test);
+//        resolveYUV(readYUV());
+        YUVHelper.loadTexture(textures);
     }
 
     @Override
@@ -89,15 +95,18 @@ public class MyRenderer implements GLSurfaceView.Renderer {
 
     @Override
     public void onDrawFrame(GL10 gl) {
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+
         resolveYUV(readYUV());
-        textureY = YUVHelper.loadTexture(w, h, yBuffer, YUVHelper.Y_TYPE);
-        textureU = YUVHelper.loadTexture(w, h, uBuffer, YUVHelper.U_TYPE);
-        textureV = YUVHelper.loadTexture(w, h, vBuffer, YUVHelper.V_TYPE);
+
         program.useProgram();
-        program.setUniform(textureY, textureU, textureV);
+//        program.setUniform(textureY, textureU, textureV);
+        program.setUniform(textures[0], yBuffer, Y_TYPE);
+        program.setUniform(textures[1], uBuffer, U_TYPE);
+        program.setUniform(textures[2], vBuffer, V_TYPE);
         rect.bindData(program);
-        rect.onDraw();
+        rect.draw();
     }
 
     /**
@@ -106,6 +115,9 @@ public class MyRenderer implements GLSurfaceView.Renderer {
      * @param yuvBuffer yuv数据
      */
     public void resolveYUV(ByteBuffer yuvBuffer) {
+        if (yuvBuffer == null) {
+            return;
+        }
         if (!isBufferNull(yBuffer, uBuffer, vBuffer)) {
             clearBuffers(yBuffer, uBuffer, vBuffer);
         }
@@ -115,14 +127,21 @@ public class MyRenderer implements GLSurfaceView.Renderer {
         }
         yuvBuffer.position(0);
         byte[] yb = new byte[ySize];
-        byte[] uvb = new byte[uvSize];
+        byte[] ub = new byte[uvSize];
+        byte[] vb = new byte[uvSize];
 
         yuvBuffer.get(yb, 0, ySize);
         yBuffer.put(yb);
-        yuvBuffer.get(uvb, 0, uvSize);
-        uBuffer.put(uvb);
-        yuvBuffer.get(uvb, 0, uvSize);
-        vBuffer.put(uvb);
+        Log.e(TAG, "resolveYUV: y" + yuvBuffer.position());
+
+        yuvBuffer.get(ub, 0, uvSize);
+        Log.e(TAG, "resolveYUV: u" + yuvBuffer.position());
+        uBuffer.put(ub);
+
+        yuvBuffer.get(vb, 0, uvSize);
+        Log.e(TAG, "resolveYUV: v" + yuvBuffer.position());
+        vBuffer.put(vb);
+
         if (yuvBuffer.position() != yuvBuffer.limit()) {
             Log.e(TAG, "resolve: " + "取出数据出错");
         }
@@ -159,17 +178,26 @@ public class MyRenderer implements GLSurfaceView.Renderer {
             yuvDataBuffer.clear();
             yuvDataBuffer.position(0);
         }
+
         try {
-            channel.read(yuvDataBuffer, count);
-            if (yuvDataBuffer.position() != yuvDataBuffer.limit()) {
-                Log.e(TAG, "readYUV: 读取数据出错" + "position:" + yuvDataBuffer.position() + "\n" + "limit:" + yuvDataBuffer.limit());
+            if (channel.read(yuvDataBuffer, count) != -1) {
+                if (yuvDataBuffer.position() != yuvDataBuffer.limit()) {
+                    Log.e(TAG, "readYUV: 读取数据出错" + "position:" + yuvDataBuffer.position() + "\n" + "limit:" + yuvDataBuffer.limit());
+                    yuvDataBuffer.mark();
+                    return null;
+                }
+                Log.e(TAG, "readYUV: " + yuvDataBuffer.position());
+
+                count += yuvDataBuffer.position();
+                yuvDataBuffer.position(0);
+                return yuvDataBuffer;
+            } else {
+                Log.e(TAG, "readYUV: " + "数据读完，共：" + count / (ySize + uvSize + uvSize) + "帧");
                 return null;
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
-        count += yuvDataBuffer.position();
-        yuvDataBuffer.position(0);
-        return yuvDataBuffer;
+        return null;
     }
 }
