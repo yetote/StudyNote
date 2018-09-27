@@ -18,18 +18,24 @@ void EGLUtil::createContext() {
         LOGE("初始化啊egldisplay失败,error code:%d", eglGetError());
         return;
     }
-    EGLint configNum;
-    EGLint configAttr[] = {
+    EGLint *configNum = new EGLint[1];
+    int configAttr[] = {
+            EGL_BUFFER_SIZE, 32,
             EGL_RED_SIZE, 8,
             EGL_GREEN_SIZE, 8,
             EGL_BLUE_SIZE, 8,
+            EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
             EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
             EGL_NONE
     };
-    if (eglChooseConfig(display, configAttr, &config, 1, &configNum) != EGL_TRUE) {
+    EGLConfig *eglConfig = new EGLConfig[1];
+    if (eglChooseConfig(display, configAttr, eglConfig, sizeof(configNum) / sizeof(configNum[0]),
+                        configNum) != EGL_TRUE) {
         LOGE("配置EGL属性失败,error code:%d", eglGetError());
         return;
     }
+    config = eglConfig[0];
+    delete[] eglConfig;
     EGLint contextAttr[] = {
             EGL_CONTEXT_CLIENT_VERSION,
             2,
@@ -51,7 +57,7 @@ void EGLUtil::destroyContext() {
 
 EGLUtil::EGLUtil() {
 //    createContext();
-    LOGE("执行构造方法");
+    LOGE("执行构造方法造方法~~~");
 }
 
 EGLUtil::~EGLUtil() {

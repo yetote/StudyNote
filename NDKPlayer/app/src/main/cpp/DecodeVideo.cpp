@@ -3,21 +3,22 @@
 //
 
 #include "DecodeVideo.h"
+#include "Rect.h"
 #include <android/log.h>
-#include <libswscale/swscale.h>
+
 
 #define LOGE(FORMAT, ...) __android_log_print(ANDROID_LOG_ERROR,"wuhuannan",FORMAT,##__VA_ARGS__);
 
-void DecodeVideo::decode(const char *videoPath) {
-    avcodec_register_all();
+AVFrame *DecodeVideo::decode(const char *videoPath, EGLDisplay display, EGLSurface eglSurface) {
+    av_register_all();
     pFmtCtx = avformat_alloc_context();
     if (avformat_open_input(&pFmtCtx, videoPath, NULL, NULL) != 0) {
         LOGE("打开视频资源文件失败");
-        return;
+        return 0;
     }
     if (avformat_find_stream_info(pFmtCtx, NULL) < 0) {
         LOGE("获取视频信息失败");
-        return;
+        return 0;
     }
     int videoIdx = -1;
     for (int i = 0; i < pFmtCtx->nb_streams; ++i) {
@@ -28,19 +29,19 @@ void DecodeVideo::decode(const char *videoPath) {
     }
     if (videoIdx == -1) {
         LOGE("未找到视频流");
-        return;
+        return 0;
     }
     pStream = pFmtCtx->streams[videoIdx];
     pCodec = avcodec_find_decoder(pStream->codecpar->codec_id);
     if (pCodec == NULL) {
         LOGE("找不到对应的解码器：%d", pStream->codecpar->codec_id)
-        return;
+        return 0;
     }
     pCodecCtx = avcodec_alloc_context3(pCodec);
     avcodec_parameters_to_context(pCodecCtx, pStream->codecpar);
     if (avcodec_open2(pCodecCtx, pCodec, NULL) < 0) {
         LOGE("打开解码器失败");
-        return;
+        return 0;
     }
     pPacket = static_cast<AVPacket *>(av_malloc(sizeof(AVPacket)));
     pFrame = av_frame_alloc();
@@ -53,8 +54,9 @@ void DecodeVideo::decode(const char *videoPath) {
                                                pCodecCtx->pix_fmt, pCodecCtx->width,
                                                pCodecCtx->height, AV_PIX_FMT_YUV420P,
                                                SWS_BICUBIC, NULL, NULL, NULL);
+    Rect *rect = new Rect();
     int ret;
-    while (av_read_frame(pFmtCtx, pPacket)) {
+    while (av_read_frame(pFmtCtx, pPacket) >= 0) {
         if (pPacket->stream_index == videoIdx) {
             ret = avcodec_send_packet(pCodecCtx, pPacket);
             while (ret >= 0) {
@@ -64,7 +66,7 @@ void DecodeVideo::decode(const char *videoPath) {
                     break;
                 } else if (ret == AVERROR_EOF) {
                     LOGE("%s", "解码完成");
-                    break;
+                    return 0;
                 } else if (ret < 0) {
                     LOGE("%s", "解码出错");
                     break;
@@ -76,7 +78,10 @@ void DecodeVideo::decode(const char *videoPath) {
                           pCodecCtx->height,
                           decodeFrame->data,
                           decodeFrame->linesize);
-                
+                LOGE("A");
+                rect->setUniform(decodeFrame);
+                rect->draw(display, eglSurface);
+
             }
         }
     }

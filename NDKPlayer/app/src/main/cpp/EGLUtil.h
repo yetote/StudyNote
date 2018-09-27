@@ -5,8 +5,8 @@
 #ifndef NDKPLAYER_EGLUTIL_H
 #define NDKPLAYER_EGLUTIL_H
 
-#include <egl/egl.h>
-
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
 class EGLUtil {
 public:
     EGLContext context;
