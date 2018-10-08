@@ -1,30 +1,37 @@
 //
-// Created by ether on 2018/9/26.
+// Created by ether on 2018/8/28.
 //
 
-#ifndef NDKPLAYER_EGLUTIL_H
-#define NDKPLAYER_EGLUTIL_H
+#ifndef OPENGLNATIVEDEMO_EGLUTIL_H
+#define OPENGLNATIVEDEMO_EGLUTIL_H
 
 #include <EGL/egl.h>
-#include <EGL/eglext.h>
+
 class EGLUtil {
 public:
-    EGLContext context;
-    EGLConfig config;
-    EGLDisplay display;
-    EGLSurface surface;
-
-    void createContext();
-
-    void destroyContext();
 
     EGLUtil();
 
-    ~EGLUtil();
+    /*
+     * 初始化设备
+     * */
+    EGLDisplay initDisplay();
 
-private:
+    EGLConfig addConfig(EGLDisplay eglDisplay);
+
+    /*
+     * 创建egl上下文
+     * */
+    EGLContext createContext(EGLDisplay eglDisplay, EGLConfig eglConfig);
+
+    /*
+     * 销毁egl
+     * */
+    void destroyEGL(EGLDisplay eglDisplay, EGLContext eglContext);
+
+    ~EGLUtil();
 
 };
 
 
-#endif //NDKPLAYER_EGLUTIL_H
+#endif //OPENGLNATIVEDEMO_EGLUTIL_H

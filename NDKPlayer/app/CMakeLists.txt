@@ -21,9 +21,8 @@ add_library( # Sets the name of the library.
              src/main/cpp/native-lib.cpp
              src/main/cpp/EGLUtil.cpp
              src/main/cpp/GLUtil.cpp
-             src/main/cpp/Rect.cpp
              src/main/cpp/DecodeVideo.cpp
-
+             src/main/cpp/PlayerView.cpp
               )
 
 # Searches for a specified prebuilt library and stores the path as a

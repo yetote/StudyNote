@@ -1,26 +1,18 @@
 //
-// Created by ether on 2018/9/26.
+// Created by ether on 2018/8/21.
 //
-#include <GLES2/gl2.h>
-#include <stdio.h>
 
-#ifndef NDKPLAYER_GLUTIL_H
-#define NDKPLAYER_GLUTIL_H
+#ifndef OPENGLNATIVEDEMO_GLUTIL_H
+#define OPENGLNATIVEDEMO_GLUTIL_H
 
 
 class GLUtil {
 public:
-    GLuint program;
+    static int compileShader(int type, const char *shaderCode);
 
-
-    void createProgram(const GLchar *vertexShaderCode, const GLchar *fragmentShaderCode);
-    void textureHelper(GLuint textureArr[]);
-
-private:
-    GLuint compileShader(GLenum type, const GLchar *shaderCode);
-
-
+    static GLint createProgram(const char *vertexShaderCode, const char *fragmentShaderCode);
+    static GLuint* createTexture();
 };
 
 
-#endif //NDKPLAYER_GLUTIL_H
+#endif //OPENGLNATIVEDEMO_GLUTIL_H

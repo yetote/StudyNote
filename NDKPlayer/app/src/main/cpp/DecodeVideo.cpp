@@ -3,22 +3,33 @@
 //
 
 #include "DecodeVideo.h"
-#include "Rect.h"
+#include "PlayerView.h"
 #include <android/log.h>
-
+#include <thread>
 
 #define LOGE(FORMAT, ...) __android_log_print(ANDROID_LOG_ERROR,"wuhuannan",FORMAT,##__VA_ARGS__);
+int count = 0;
+int fc = 0;
 
-AVFrame *DecodeVideo::decode(const char *videoPath, EGLDisplay display, EGLSurface eglSurface) {
+void DecodeVideo::decode(const char *videoPath, const char *vertexCode, const char *fragCode,
+                         EGLDisplay eglDisplay, EGLSurface eglSurface, EGLContext eglContext, int w,
+                         int h) {
+    PlayerView playerView;
     av_register_all();
+    playerView.initVertex();
+    playerView.initLocation(vertexCode, fragCode);
+    glClearColor(0.5f, 0.5f, 0.5f, 0.0f);
+    glViewport(0, 0, w, h);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glDisable(GL_DEPTH_TEST);
     pFmtCtx = avformat_alloc_context();
     if (avformat_open_input(&pFmtCtx, videoPath, NULL, NULL) != 0) {
         LOGE("打开视频资源文件失败");
-        return 0;
+//        return 0;
     }
     if (avformat_find_stream_info(pFmtCtx, NULL) < 0) {
         LOGE("获取视频信息失败");
-        return 0;
+//        return 0;
     }
     int videoIdx = -1;
     for (int i = 0; i < pFmtCtx->nb_streams; ++i) {
@@ -29,19 +40,19 @@ AVFrame *DecodeVideo::decode(const char *videoPath, EGLDisplay display, EGLSurfa
     }
     if (videoIdx == -1) {
         LOGE("未找到视频流");
-        return 0;
+//        return 0;
     }
     pStream = pFmtCtx->streams[videoIdx];
     pCodec = avcodec_find_decoder(pStream->codecpar->codec_id);
     if (pCodec == NULL) {
         LOGE("找不到对应的解码器：%d", pStream->codecpar->codec_id)
-        return 0;
+//        return 0;
     }
     pCodecCtx = avcodec_alloc_context3(pCodec);
     avcodec_parameters_to_context(pCodecCtx, pStream->codecpar);
     if (avcodec_open2(pCodecCtx, pCodec, NULL) < 0) {
         LOGE("打开解码器失败");
-        return 0;
+//        return 0;
     }
     pPacket = static_cast<AVPacket *>(av_malloc(sizeof(AVPacket)));
     pFrame = av_frame_alloc();
@@ -54,9 +65,9 @@ AVFrame *DecodeVideo::decode(const char *videoPath, EGLDisplay display, EGLSurfa
                                                pCodecCtx->pix_fmt, pCodecCtx->width,
                                                pCodecCtx->height, AV_PIX_FMT_YUV420P,
                                                SWS_BICUBIC, NULL, NULL, NULL);
-    Rect *rect = new Rect();
     int ret;
     while (av_read_frame(pFmtCtx, pPacket) >= 0) {
+        LOGE("%d", count++);
         if (pPacket->stream_index == videoIdx) {
             ret = avcodec_send_packet(pCodecCtx, pPacket);
             while (ret >= 0) {
@@ -66,7 +77,8 @@ AVFrame *DecodeVideo::decode(const char *videoPath, EGLDisplay display, EGLSurfa
                     break;
                 } else if (ret == AVERROR_EOF) {
                     LOGE("%s", "解码完成");
-                    return 0;
+//                    return 0;
+                    break;
                 } else if (ret < 0) {
                     LOGE("%s", "解码出错");
                     break;
@@ -78,10 +90,17 @@ AVFrame *DecodeVideo::decode(const char *videoPath, EGLDisplay display, EGLSurfa
                           pCodecCtx->height,
                           decodeFrame->data,
                           decodeFrame->linesize);
-                LOGE("A");
-                rect->setUniform(decodeFrame);
-                rect->draw(display, eglSurface);
+                fc++;
+                LOGE("解码了%d帧", fc);
 
+//                LOGE("A");
+//                rect->setUniform(decodeFrame);
+//                rect->draw(display, eglSurface);
+                std::thread t(&PlayerView::draw, &playerView, decodeFrame, eglDisplay, eglSurface,
+                              eglContext);
+//                playerView.threadDraw(decodeFrame, eglDisplay, eglSurface);
+                t.join();
+//                playerView.draw(decodeFrame, eglDisplay, eglSurface);
             }
         }
     }

@@ -7,6 +7,7 @@
 
 #include <EGL/egl.h>
 
+
 extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
@@ -17,7 +18,9 @@ extern "C" {
 
 class DecodeVideo {
 public:
-    AVFrame *decode(const char *videoPath, EGLDisplay display, EGLSurface surface);
+    void
+    decode(const char *videoPath, const char *vertexCode, const char *fragCode, EGLDisplay display,
+           EGLSurface surface, EGLContext eglContext, int w, int h);
 
 private:
     AVFrame *pFrame;

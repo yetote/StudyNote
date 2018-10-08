@@ -1,57 +1,53 @@
 #include <jni.h>
 #include "../cpp/EGLUtil.h"
-#include "Rect.h"
 #include "DecodeVideo.h"
+#include "Triangle.h"
+#include "../jni/com_example_ether_ndkplayer_EGLCRenderer.h"
 #include <android/native_window_jni.h>
 #include <android/native_window.h>
 
-EGLUtil *eglUtil;
-Rect *rect;
-DecodeVideo *decodeVideo;
+EGLUtil EGLUtil;
+EGLDisplay eglDisplay;
+EGLContext eglContext;
+EGLConfig eglConfig;
+DecodeVideo decodeVideo;
+
+
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_example_ether_ndkplayer_PlayerView_configEGLContext(JNIEnv *env, jobject instance) {
-    eglUtil = new EGLUtil();
-    rect = new Rect();
-    decodeVideo = new DecodeVideo();
-    eglUtil->createContext();
+
+    eglDisplay = EGLUtil.initDisplay();
+    eglConfig = EGLUtil.addConfig(eglDisplay);
+    eglContext = EGLUtil.createContext(eglDisplay, eglConfig);
 
 }extern "C"
 JNIEXPORT void JNICALL
 Java_com_example_ether_ndkplayer_PlayerView_destroyEGLContext(JNIEnv *env, jobject instance) {
-    eglUtil->destroyContext();
-    delete decodeVideo;
-    delete rect;
-    delete eglUtil;
+
+    EGLUtil.destroyEGL(eglDisplay, eglContext);
+
 }extern "C"
 JNIEXPORT jint JNICALL
 Java_com_example_ether_ndkplayer_PlayerView_draw(JNIEnv *env, jobject instance, jstring videoPath_,
                                                  jstring vertexShaderCode_, jstring fragShaderCode_,
-                                                 jobject surface) {
+                                                 jobject surface, jint w, jint h) {
+    const char *videoPath = env->GetStringUTFChars(videoPath_, 0);
     const char *vertexShaderCode = env->GetStringUTFChars(vertexShaderCode_, 0);
     const char *fragShaderCode = env->GetStringUTFChars(fragShaderCode_, 0);
-    const char *videoPath = env->GetStringUTFChars(videoPath_, 0);
 
+    int *surfaceAttributes = new int[1]{EGL_NONE};
     ANativeWindow *window = ANativeWindow_fromSurface(env, surface);
-    EGLint surfaceAttr[] = {EGL_NONE};
-    EGLSurface eglSurface = eglCreateWindowSurface(eglUtil->display, eglUtil->config, window,
-                                                   surfaceAttr);
-    eglMakeCurrent(eglUtil->display, eglSurface, eglSurface, eglUtil->context);
+    EGLSurface eglSurface = eglCreateWindowSurface(eglDisplay, eglConfig, window,
+                                                   surfaceAttributes);
+    decodeVideo.decode(videoPath, vertexShaderCode, fragShaderCode, eglDisplay, eglSurface,
+                       eglContext, w, h);
 
-    rect->bindData(vertexShaderCode, fragShaderCode);
-    decodeVideo->decode(videoPath, eglUtil->display, eglSurface);
-//    while (frame != 0) {
-//        rect->setUniform(frame);
-//        rect->draw();
-//        eglSwapBuffers(eglUtil->display, eglSurface);
-//        frame = decodeVideo->decode(videoPath);
-//    }
-
-    eglDestroySurface(eglUtil->display, eglSurface);
-
+//    eglSwapBuffers(eglDisplay, eglSurface);
+    eglDestroySurface(eglDisplay, eglSurface);
 
     env->ReleaseStringUTFChars(videoPath_, videoPath);
     env->ReleaseStringUTFChars(vertexShaderCode_, vertexShaderCode);
     env->ReleaseStringUTFChars(fragShaderCode_, fragShaderCode);
-    return -1;
+    return 0;
 }

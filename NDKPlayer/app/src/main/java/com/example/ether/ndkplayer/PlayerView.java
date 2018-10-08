@@ -20,7 +20,7 @@ public class PlayerView extends HandlerThread {
     }
 
     public PlayerView() {
-        super("GLThread");
+        super("PlayerView");
     }
 
     @Override
@@ -34,18 +34,12 @@ public class PlayerView extends HandlerThread {
             quit();
         });
     }
-    /**
-     * 配置egl启动环境
-     */
+
     public native void configEGLContext();
 
-    /**
-     * 销毁egl环境
-     */
+
     public native void destroyEGLContext();
 
-    /**
-     * 绘制
-     */
-    public native int draw(String videoPath, String vertexShaderCode, String fragShaderCode, Surface surface);
+
+    public native int draw(String videoPath, String vertexShaderCode, String fragShaderCode, Surface surface,int w,int h);
 }

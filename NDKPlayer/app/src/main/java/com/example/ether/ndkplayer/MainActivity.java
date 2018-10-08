@@ -24,8 +24,6 @@ public class MainActivity extends AppCompatActivity {
         playerView.start();
         surfaceView = findViewById(R.id.surfaceView);
         String path = this.getExternalCacheDir().getPath() + "/test.mp4";
-        String vertexCode = TextRecourseReader.readTextFileFromResource(this, R.raw.player_vertex_shader);
-        String fragCode = TextRecourseReader.readTextFileFromResource(this, R.raw.player_frag_shader);
 
         surfaceView.getHolder().addCallback(new SurfaceHolder.Callback() {
             @Override
@@ -36,8 +34,9 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
                 Log.e(TAG, "surfaceChanged: " + Thread.currentThread().getName());
-                new Thread(() -> playerView.draw(path, vertexCode, fragCode, holder.getSurface())).start();
-
+                String vertexCode = TextRecourseReader.readTextFileFromResource(MainActivity.this, R.raw.vertex_shader);
+                String fragCode = TextRecourseReader.readTextFileFromResource(MainActivity.this, R.raw.fragment_shader);
+                playerView.draw(path, vertexCode, fragCode, holder.getSurface(), width, height);
             }
 
             @Override
