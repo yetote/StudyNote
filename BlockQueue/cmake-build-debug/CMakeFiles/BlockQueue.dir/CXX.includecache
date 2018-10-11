@@ -1,0 +1,24 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/cygdrive/d/CWorkSpace/BlockQueue/BlockQueue.h
+queue
+-
+mutex
+-
+
+/cygdrive/d/CWorkSpace/BlockQueue/main.cpp
+iostream
+-
+thread
+-
+BlockQueue.h
+/cygdrive/d/CWorkSpace/BlockQueue/BlockQueue.h
+windows.h
+/cygdrive/d/CWorkSpace/BlockQueue/windows.h
+
