@@ -7,6 +7,8 @@
 
 
 #include <GLES2/gl2.h>
+#include "EGLUtil.h"
+#include "BlockQueue.h"
 
 extern "C" {
 #include <libavutil/frame.h>
@@ -14,20 +16,29 @@ extern "C" {
 
 class PlayerView {
 public:
-    void initVertex();
-
-    void initLocation(const char *vertexCode, const char *fragmentCode);
-
-    void threadDraw(AVFrame *frame, EGLDisplay eglDisplay, EGLSurface eglSurface);
-
-    void draw(AVFrame *frame, EGLDisplay eglDisplay, EGLSurface eglSurface, EGLContext eglContext);
+    void play(ANativeWindow *window, BlockQueue<AVFrame *> &blockQueue, const char *vertexCode,
+              const char *fragCode, int w, int h);
 
 private:
+    EGLContext eglContext;
+    EGLConfig eglConfig;
+    EGLDisplay eglDisplay;
+    EGLSurface eglSurface;
     GLfloat *vertexArray;
+    GLfloat *textureArray;
     GLint aPosition, aTextureCoordinates;
     GLint uTexY, uTexU, uTexV;
     GLuint program;
     GLint textureY, textureU, textureV;
+    ANativeWindow *window;
+
+    void initLocation(const char *vertexCode, const char *fragmentCode);
+
+    void draw(AVFrame *frame);
+
+    void initEGL();
+
+    void initVertex();
 };
 
 

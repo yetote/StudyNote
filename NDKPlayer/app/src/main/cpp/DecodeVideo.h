@@ -6,7 +6,7 @@
 #define NDKPLAYER_DECODEVIDEO_H
 
 #include <EGL/egl.h>
-
+#include "BlockQueue.h"
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -18,9 +18,7 @@ extern "C" {
 
 class DecodeVideo {
 public:
-    void
-    decode(const char *videoPath, const char *vertexCode, const char *fragCode, EGLDisplay display,
-           EGLSurface surface, EGLContext eglContext, int w, int h);
+    void decode(const char *videoPath, BlockQueue<AVFrame *> &blockQueue);
 
 private:
     AVFrame *pFrame;

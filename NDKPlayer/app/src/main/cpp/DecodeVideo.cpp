@@ -6,22 +6,22 @@
 #include "PlayerView.h"
 #include <android/log.h>
 #include <thread>
+#include <unistd.h>
 
 #define LOGE(FORMAT, ...) __android_log_print(ANDROID_LOG_ERROR,"wuhuannan",FORMAT,##__VA_ARGS__);
 int count = 0;
 int fc = 0;
 
-void DecodeVideo::decode(const char *videoPath, const char *vertexCode, const char *fragCode,
-                         EGLDisplay eglDisplay, EGLSurface eglSurface, EGLContext eglContext, int w,
-                         int h) {
-    PlayerView playerView;
+
+void DecodeVideo::decode(const char *videoPath, BlockQueue<AVFrame *> &blockQueue) {
+//    PlayerView playerView;
     av_register_all();
-    playerView.initVertex();
-    playerView.initLocation(vertexCode, fragCode);
-    glClearColor(0.5f, 0.5f, 0.5f, 0.0f);
-    glViewport(0, 0, w, h);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glDisable(GL_DEPTH_TEST);
+//    playerView.initVertex();
+//    playerView.initLocation(vertexCode, fragCode);
+//    glClearColor(0.5f, 0.5f, 0.5f, 0.0f);
+//    glViewport(0, 0, w, h);
+//    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+//    glDisable(GL_DEPTH_TEST);
     pFmtCtx = avformat_alloc_context();
     if (avformat_open_input(&pFmtCtx, videoPath, NULL, NULL) != 0) {
         LOGE("打开视频资源文件失败");
@@ -92,15 +92,8 @@ void DecodeVideo::decode(const char *videoPath, const char *vertexCode, const ch
                           decodeFrame->linesize);
                 fc++;
                 LOGE("解码了%d帧", fc);
-
-//                LOGE("A");
-//                rect->setUniform(decodeFrame);
-//                rect->draw(display, eglSurface);
-                std::thread t(&PlayerView::draw, &playerView, decodeFrame, eglDisplay, eglSurface,
-                              eglContext);
-//                playerView.threadDraw(decodeFrame, eglDisplay, eglSurface);
-                t.join();
-//                playerView.draw(decodeFrame, eglDisplay, eglSurface);
+                blockQueue.push(decodeFrame);
+                usleep(46000);
             }
         }
     }

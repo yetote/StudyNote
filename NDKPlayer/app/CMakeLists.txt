@@ -19,6 +19,7 @@ add_library( # Sets the name of the library.
 
              # Provides a relative path to your source file(s).
              src/main/cpp/native-lib.cpp
+             src/main/cpp/BlockQueue.cpp
              src/main/cpp/EGLUtil.cpp
              src/main/cpp/GLUtil.cpp
              src/main/cpp/DecodeVideo.cpp
