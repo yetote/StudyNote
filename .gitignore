@@ -13,3 +13,4 @@
 *.jar
 *.pro
 */androidTest/*
+OpenSLPlay/app/src/androidTest/java/com/example/ether/openslplay/ExampleInstrumentedTest.java
