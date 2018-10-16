@@ -6,7 +6,8 @@
 #define OPENSLPLAY_DECODEAUDIO_H
 
 #include <android/log.h>
-
+#include "AudioUtil.h"
+#include "BlockQueue.h"
 extern "C" {
 #include <libavformat/avformat.h>
 #include <libavutil/frame.h>
@@ -16,7 +17,7 @@ extern "C" {
 class DecodeAudio {
 
 public:
-    void decode(const char *audioPath, const char *outPath);
+    void decode(const char *audioPath, const char *outPath,BlockQueue<audioType> &blockQueue);
 
 private:
     AVFormatContext *pFmtCtx;

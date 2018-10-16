@@ -8,12 +8,17 @@
 #include <SLES/OpenSLES.h>
 #include <SLES/OpenSLES_Android.h>
 #include <cstdio>
+#include "AudioUtil.h"
+#include "BlockQueue.h"
+#include <android/log.h>
+#include <cstddef>
+#include <cstdlib>
+#include <unistd.h>
 
 class PlayAudio {
 public:
 
-    void play(const char *pcmPath);
-
+    void play(BlockQueue<audioType> &blockQueue);
 
 
 private:
@@ -25,8 +30,11 @@ private:
     SLVolumeItf bqPlayerVolume;
     SLAndroidSimpleBufferQueueItf bufferQueueObj;
     SLEffectSendItf bqPlayerEffectSend;
+
     void start();
+
     void setDataSource(const char *pcmPath);
+
     void prepare();
 };
 

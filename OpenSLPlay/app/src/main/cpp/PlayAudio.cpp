@@ -3,10 +3,8 @@
 //
 
 
-#include <cstddef>
 #include "PlayAudio.h"
-#include <android/log.h>
-#include <cstdlib>
+
 
 #define LOGE(FORMAT, ...) __android_log_print(ANDROID_LOG_ERROR,"openSLPlay",FORMAT,##__VA_ARGS__)
 #define false SL_BOOLEAN_FALSE
@@ -15,7 +13,6 @@
 #define null NULL
 FILE *pcmFile;
 uint8_t *outBuffer;
-
 size_t getPCMData(FILE *file, uint8_t *outBuffer) {
     while (!feof(file)) {
         size_t size = fread(outBuffer, 1, 44100 * 2 * 2, file);
@@ -155,10 +152,20 @@ void PlayAudio::start() {
     bqPlayerCallback(bufferQueueObj, this);
 }
 
-void PlayAudio::play(const char *pcmPath) {
-    setDataSource(pcmPath);
-    prepare();
-    start();
+void PlayAudio::play(BlockQueue<audioType> &blockQueue) {
+//    setDataSource(pcmPath);
+//    prepare();
+//    start();
+    audioType audio;
+    while (true) {
+        popResult res = blockQueue.pop(audio);
+        if (res == POP_STOP) break;
+        if (res == POP_UNEXPECTED) continue;
+//            std::cout << "消费者消费了了产品" << audio.<< std::endl;
+        int size = audio.size;
+        LOGE("数据获取正确%d", size);
+        sleep(1);
+    }
 }
 
 

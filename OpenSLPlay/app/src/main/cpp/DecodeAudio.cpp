@@ -6,10 +6,13 @@
 
 #include "DecodeAudio.h"
 
+
 #define LOGE(FORMAT, ...) __android_log_print(ANDROID_LOG_ERROR,"wuhuannan",FORMAT,##__VA_ARGS__)
 #define MAX_AUDIO_FRAME_SIZE 44100*4
+audioType audioData;
 
-void DecodeAudio::decode(const char *audioPath, const char *outPath) {
+void
+DecodeAudio::decode(const char *audioPath, const char *outPath, BlockQueue<audioType> &blockQueue) {
     av_register_all();
     this->pFmtCtx = avformat_alloc_context();
     if (avformat_open_input(&pFmtCtx, audioPath, NULL, NULL) != 0) {
@@ -99,7 +102,9 @@ void DecodeAudio::decode(const char *audioPath, const char *outPath) {
                                       outBufferSize,
                                       (const uint8_t **) (pFrame->data),
                                       pFrame->nb_samples);
-                fwrite(outBuffer, 1, outBufferSize, outFile);
+//                fwrite(outBuffer, 1, outBufferSize, outFile);
+                audioData = {outBuffer, outBufferSize};
+                blockQueue.push(audioData);
             }
         }
         av_packet_unref(pPacket);
