@@ -1,8 +1,8 @@
 #include <jni.h>
 #include <string>
+#include "BlockQueue.h"
 #include "DecodeAudio.h"
 #include "PlayAudio.h"
-#include "BlockQueue.h"
 #include <thread>
 #include <android/log.h>
 

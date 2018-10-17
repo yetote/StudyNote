@@ -13,22 +13,32 @@
 #define null NULL
 FILE *pcmFile;
 uint8_t *outBuffer;
-size_t getPCMData(FILE *file, uint8_t *outBuffer) {
-    while (!feof(file)) {
-        size_t size = fread(outBuffer, 1, 44100 * 2 * 2, file);
-        LOGE("读取了%ld数据", size);
-        return size;
-    }
-    return 0;
-}
+int size;
+//size_t getPCMData(audioType &audioTypeParam) {
+//    popResult res = blockQueue.pop(audioTypeParam);
+//    if (res == POP_STOP) {
+//        return -1;
+//    }
+//    if (res == POP_UNEXPECTED) {
+////        continue;
+//    }
+//
+////    while (!feof(file)) {
+////        size_t size = fread(outBuffer, 1, 44100 * 2 * 2, file);
+////        LOGE("读取了%ld数据", size);
+////        return size;
+////    }
+//    return audioTypeParam.size;
+//}
 
 void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bf, void *context) {
-    size_t size = getPCMData(pcmFile, outBuffer);
+//    size_t size = getPCMData(audioData);
     if (size == 0) {
         LOGE("读取失败");
         return;
     }
     if (outBuffer != null && size > 0) {
+
 //        SLresult result=(*bf)->Enqueue(bf,outBuffer,size);
         SLresult result = (*bf)->Enqueue(bf, outBuffer, size);
     }
@@ -152,20 +162,23 @@ void PlayAudio::start() {
     bqPlayerCallback(bufferQueueObj, this);
 }
 
-void PlayAudio::play(BlockQueue<audioType> &blockQueue) {
+void PlayAudio::play(BlockQueue<audioType> &blockQueueParam) {
 //    setDataSource(pcmPath);
-//    prepare();
-//    start();
-    audioType audio;
-    while (true) {
-        popResult res = blockQueue.pop(audio);
-        if (res == POP_STOP) break;
-        if (res == POP_UNEXPECTED) continue;
-//            std::cout << "消费者消费了了产品" << audio.<< std::endl;
-        int size = audio.size;
-        LOGE("数据获取正确%d", size);
-        sleep(1);
-    }
+    popResult res = blockQueueParam.pop(audioData);
+    outBuffer=audioData.buffer;
+    size=audioData.size;
+    prepare();
+    start();
+//    audioType audio;
+//    while (true) {
+//        popResult res = blockQueue.pop(audio);
+//        if (res == POP_STOP) break;
+//        if (res == POP_UNEXPECTED) continue;
+////            std::cout << "消费者消费了了产品" << audio.<< std::endl;
+//        int size = audio.size;
+//        LOGE("数据获取正确%d", size);
+//        sleep(1);
+//    }
 }
 
 

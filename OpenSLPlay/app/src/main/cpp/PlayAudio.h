@@ -25,7 +25,7 @@ private:
     SLObjectItf engineObj, outputMixObj, bqPlayerObj;
     SLEngineItf engineEngine;
     SLEnvironmentalReverbItf environmentalReverb;
-    static SLEnvironmentalReverbSettings reverbSettings;
+    SLEnvironmentalReverbSettings reverbSettings;
     SLPlayItf bqPlayer;
     SLVolumeItf bqPlayerVolume;
     SLAndroidSimpleBufferQueueItf bufferQueueObj;
