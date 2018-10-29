@@ -74,5 +74,8 @@ Android学习笔记
   - [x] [增加部分glsl代码补全(详细查看链接)](https://github.com/yetote/StudyNote/tree/master/templates)  
 - [ ] 音视频处理
   - [x] [学习计划](https://github.com/yetote/StudyNote/blob/master/音视频学习计划.md)   
-  
+- [ ] LeetCode
+  - [ ] 简单
+  - [ ] 中等
+  - [ ] 困难  
 ***2018-06-22 16:44:30***
