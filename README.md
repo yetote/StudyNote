@@ -75,8 +75,8 @@ Android学习笔记
 - [ ] 音视频处理
   - [x] [学习计划](https://github.com/yetote/StudyNote/blob/master/音视频学习计划.md)   
 - [ ] LeetCode
-  - [ ] [简单](https://github.com/yetote/StudyNote/tree/master/leetcoe/简单)
-  - [ ] [中等](https://github.com/yetote/StudyNote/tree/master/leetcoe/普通)
-  - [ ] [困难](https://github.com/yetote/StudyNote/tree/master/leetcoe/困难)  
+  - [ ] [简单](https://github.com/yetote/StudyNote/tree/master/leetcode/简单)
+  - [ ] [中等](https://github.com/yetote/StudyNote/tree/master/leetcode/普通)
+  - [ ] [困难](https://github.com/yetote/StudyNote/tree/master/leetcode/困难)  
   
 ***2018-06-22 16:44:30***
