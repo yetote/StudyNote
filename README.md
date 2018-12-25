@@ -55,7 +55,7 @@ Android学习笔记
   - [ ] 第三方sdk集成与常见bug
      - [ ] 百度地图
      - [ ] 极光推送
-     - [ ]  IM
+     - [x] [环信（未完成）](https://github.com/yetote/StudyNote/blob/master/我走过最长的路就是环信的套路.md)
      - [ ] 第三方登录
 - [ ] Bitmap优化
 - [ ] 事件传递和事件分发
