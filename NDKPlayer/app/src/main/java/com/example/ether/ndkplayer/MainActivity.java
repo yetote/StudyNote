@@ -26,7 +26,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         PlayerView playerView = new PlayerView();
-        playerView.start();
+//        playerView.start();
         surfaceView = findViewById(R.id.surfaceView);
         btn = findViewById(R.id.btn);
         String path = this.getExternalCacheDir().getPath() + "/test.mp4";
@@ -52,7 +52,7 @@ public class MainActivity extends AppCompatActivity {
 
             }
         });
-        btn.setOnClickListener(v -> playerView.draw(path, vertexCode, fragCode, surface, w, h));
+        btn.setOnClickListener(v -> playerView.play(path, vertexCode, fragCode, surface, w, h));
     }
 
 }

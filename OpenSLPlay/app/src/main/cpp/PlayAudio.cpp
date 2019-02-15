@@ -14,25 +14,18 @@
 FILE *pcmFile;
 uint8_t *outBuffer;
 int size;
-//size_t getPCMData(audioType &audioTypeParam) {
+size_t getPCMData(audioType &audioTypeParam) {
 //    popResult res = blockQueue.pop(audioTypeParam);
-//    if (res == POP_STOP) {
-//        return -1;
-//    }
-//    if (res == POP_UNEXPECTED) {
-////        continue;
-//    }
-//
-////    while (!feof(file)) {
-////        size_t size = fread(outBuffer, 1, 44100 * 2 * 2, file);
-////        LOGE("读取了%ld数据", size);
-////        return size;
-////    }
-//    return audioTypeParam.size;
-//}
+
+    while (!feof(file)) {
+        size_t size = fread(outBuffer, 1, 44100 * 2 * 2, file);
+        LOGE("读取了%ld数据", size);
+        return size;
+    }
+}
 
 void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bf, void *context) {
-//    size_t size = getPCMData(audioData);
+    size_t size = getPCMData(audioData);
     if (size == 0) {
         LOGE("读取失败");
         return;
@@ -163,10 +156,10 @@ void PlayAudio::start() {
 }
 
 void PlayAudio::play(BlockQueue<audioType> &blockQueueParam) {
-//    setDataSource(pcmPath);
-    popResult res = blockQueueParam.pop(audioData);
-    outBuffer=audioData.buffer;
-    size=audioData.size;
+    setDataSource(pcmPath);
+//    popResult res = blockQueueParam.pop(audioData);
+//    outBuffer=audioData.buffer;
+//    size=audioData.size;
     prepare();
     start();
 //    audioType audio;

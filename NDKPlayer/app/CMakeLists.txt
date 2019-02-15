@@ -4,27 +4,28 @@
 # Sets the minimum version of CMake required to build the native library.
 
 cmake_minimum_required(VERSION 3.4.1)
-set(path_project D:/AndroidStudioProjects/NDKPlayer)
-set(libs_path  ${path_project}/app/build/intermediates/cmake/debug/obj)
+set(path_project D:/AndroidStudioProjects/StudyNote/NDKPlayer)
+#set(libs_path  ${path_project}/app/build/intermediates/cmake/debug/obj)
+set(libs_path ${path_project}/app/src/main/jniLibs/libs)
 # Creates and names a library, sets it as either STATIC
 # or SHARED, and provides the relative paths to its source code.
 # You can define multiple libraries, and CMake builds them for you.
 # Gradle automatically packages shared libraries with your APK.
 
 add_library( # Sets the name of the library.
-             native-lib
+        native-lib
 
-             # Sets the library as a shared library.
-             SHARED
+        # Sets the library as a shared library.
+        SHARED
 
-             # Provides a relative path to your source file(s).
-             src/main/cpp/native-lib.cpp
-             src/main/cpp/BlockQueue.cpp
-             src/main/cpp/EGLUtil.cpp
-             src/main/cpp/GLUtil.cpp
-             src/main/cpp/DecodeVideo.cpp
-             src/main/cpp/PlayerView.cpp
-              )
+        # Provides a relative path to your source file(s).
+        src/main/cpp/native-lib.cpp
+        src/main/cpp/util/BlockQueue.cpp
+        src/main/cpp/decode/Decode.cpp
+        src/main/cpp/video/EGLUtil.cpp
+        src/main/cpp/video/GLUtil.cpp
+        src/main/cpp/video/PlayerView.cpp
+        )
 
 # Searches for a specified prebuilt library and stores the path as a
 # variable. Because CMake includes system libraries in the search path by
@@ -35,7 +36,7 @@ add_library( # Sets the name of the library.
 include_directories(${path_project}/app/src/main/jni/includes)
 
 #添加FFmpeg预编译的so库
-add_library( avutil
+add_library(avutil
         SHARED
         IMPORTED
         )
@@ -47,7 +48,7 @@ set_target_properties(
         ${libs_path}/${ANDROID_ABI}/libavutil.so
 )
 
-add_library( swresample
+add_library(swresample
         SHARED
         IMPORTED
         )
@@ -58,7 +59,7 @@ set_target_properties(
         ${libs_path}/${ANDROID_ABI}/libswresample.so
 )
 
-add_library( avcodec
+add_library(avcodec
         SHARED
         IMPORTED
         )
@@ -69,7 +70,7 @@ set_target_properties(
         ${libs_path}/${ANDROID_ABI}/libavcodec.so
 )
 
-add_library( avformat
+add_library(avformat
         SHARED
         IMPORTED
         )
@@ -80,7 +81,7 @@ set_target_properties(
         ${libs_path}/${ANDROID_ABI}/libavformat.so
 )
 
-add_library( swscale
+add_library(swscale
         SHARED
         IMPORTED
         )
@@ -92,7 +93,7 @@ set_target_properties(
 )
 
 
-add_library( avfilter
+add_library(avfilter
         SHARED
         IMPORTED
         )
@@ -103,7 +104,7 @@ set_target_properties(
         ${libs_path}/${ANDROID_ABI}/libavfilter.so
 )
 
-add_library( avdevice
+add_library(avdevice
         SHARED
         IMPORTED
         )
@@ -115,28 +116,28 @@ set_target_properties(
 )
 
 find_library( # Sets the name of the path variable.
-              log-lib
+        log-lib
 
-              # Specifies the name of the NDK library that
-              # you want CMake to locate.
-              log )
+        # Specifies the name of the NDK library that
+        # you want CMake to locate.
+        log)
 
 # Specifies libraries CMake should link to your target library. You
 # can link multiple libraries, such as libraries you define in this
 # build script, prebuilt third-party libraries, or system libraries.
 
 target_link_libraries( # Specifies the target library.
-                       native-lib
-                       android
-                       EGL
-                       GLESv2
-                       avutil
-                       swresample
-                       avformat
-                       avcodec
-                       swscale
-                       avfilter
-                       avdevice
-                       # Links the target library to the log library
-                       # included in the NDK.
-                       ${log-lib} )
+        native-lib
+        android
+        EGL
+        GLESv2
+        avutil
+        swresample
+        avformat
+        avcodec
+        swscale
+        avfilter
+        avdevice
+        # Links the target library to the log library
+        # included in the NDK.
+        ${log-lib})
