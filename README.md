@@ -55,7 +55,7 @@ Android学习笔记
   - [ ] 第三方sdk集成与常见bug
      - [ ] 百度地图
      - [ ] 极光推送
-     - [ ]  IM
+     - [x] [环信（未完成）](https://github.com/yetote/StudyNote/blob/master/我走过最长的路就是环信的套路.md)
      - [ ] 第三方登录
 - [ ] Bitmap优化
 - [ ] 事件传递和事件分发
@@ -74,5 +74,10 @@ Android学习笔记
   - [x] [增加部分glsl代码补全(详细查看链接)](https://github.com/yetote/StudyNote/tree/master/templates)  
 - [ ] 音视频处理
   - [x] [学习计划](https://github.com/yetote/StudyNote/blob/master/音视频学习计划.md)   
+  - [ ] ffmpeg  
+- [ ] LeetCode
+  - [ ] [简单](https://github.com/yetote/StudyNote/tree/master/leetcode/简单)
+  - [ ] [中等](https://github.com/yetote/StudyNote/tree/master/leetcode/普通)
+  - [ ] [困难](https://github.com/yetote/StudyNote/tree/master/leetcode/困难)  
   
 ***2018-06-22 16:44:30***
