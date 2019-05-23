@@ -14,3 +14,4 @@
 *.pro
 */androidTest/*
 OpenSLPlay/app/src/androidTest/java/com/example/ether/openslplay/ExampleInstrumentedTest.java
+HardwareEncodeAudio/app/src/androidTest/java/com/example/hardwareencodeaudio/ExampleInstrumentedTest.java
