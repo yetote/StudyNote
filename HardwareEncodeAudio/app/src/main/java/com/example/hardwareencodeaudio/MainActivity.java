@@ -1,9 +1,5 @@
 package com.example.hardwareencodeaudio;
 
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.media.AudioFormat;
@@ -12,22 +8,22 @@ import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
 import android.media.MediaRecorder;
-import android.net.rtp.AudioCodec;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.Arrays;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
 
-import static android.media.AudioRecord.ERROR_DEAD_OBJECT;
-import static android.media.AudioRecord.ERROR_INVALID_OPERATION;
 import static android.media.MediaCodec.CONFIGURE_FLAG_ENCODE;
 import static android.media.MediaFormat.MIMETYPE_AUDIO_AAC;
 
@@ -98,7 +94,6 @@ public class MainActivity extends AppCompatActivity {
                         if (inputBuffer != null) {
                             try {
                                 byte[] data = blockingQueue.take();
-//                                writeFile.write(data);
                                 inputBuffer.clear();
                                 inputBuffer.put(data);
                                 mediaCodec.queueInputBuffer(inputIndex, 0, data.length, 0, 0);
@@ -118,7 +113,7 @@ public class MainActivity extends AppCompatActivity {
                             outputBuffer.limit(bufferInfo.offset + bufferInfo.size);
                             byte[] outData = new byte[bufferInfo.size + 7];
                             outputBuffer.get(outData, 7, bufferInfo.size);
-                            addADTStoPacket(outData,bufferInfo.size+7);
+                            addADTStoPacket(outData, bufferInfo.size + 7);
                             writeFile.write(outData);
                         }
                         mediaCodec.releaseOutputBuffer(outputIndex, false);

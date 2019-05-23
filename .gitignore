@@ -15,3 +15,5 @@
 */androidTest/*
 OpenSLPlay/app/src/androidTest/java/com/example/ether/openslplay/ExampleInstrumentedTest.java
 HardwareEncodeAudio/app/src/androidTest/java/com/example/hardwareencodeaudio/ExampleInstrumentedTest.java
+HardwareEncodeAudio/app/debug/app-debug.apk
+HardwareEncodeAudio/app/debug/output.json
