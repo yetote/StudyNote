@@ -28,6 +28,7 @@ public class Record {
     private boolean isRecording;
     private byte[] audioData;
     private static final String TAG = "Record";
+    private Codec codec;
 
     public Record(final int channelCount, String path, final int sampleRate, Context context) {
         this.channelCount = channelCount;
@@ -44,6 +45,7 @@ public class Record {
             default:
                 break;
         }
+        codec = new Codec(sampleRate, channelCount,path);
         audioData = new byte[sampleRate * channelCount];
         audioRecord = new AudioRecord(MediaRecorder.AudioSource.MIC, sampleRate, channelLayout, AudioFormat.ENCODING_PCM_16BIT, sampleRate * channelCount);
         thread = new Thread(new Runnable() {
@@ -51,7 +53,7 @@ public class Record {
             public void run() {
                 while (isRecording) {
                     audioRecord.read(audioData, 0, sampleRate * channelCount);
-
+                    codec.pushData(audioData);
                 }
                 audioRecord.stop();
                 Log.e(TAG, "run: 录音结束");
@@ -62,9 +64,12 @@ public class Record {
     public void startRecording() {
         isRecording = true;
         audioRecord.startRecording();
+        thread.start();
+        codec.startCodec();
     }
 
     public void stop() {
         isRecording = false;
+        codec.stop();
     }
 }

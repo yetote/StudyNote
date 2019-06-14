@@ -8,6 +8,7 @@ import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -15,7 +16,8 @@ public class MainActivity extends AppCompatActivity {
     private Record record;
     public static final int PEMISSION_AUDIO_CODE = 1;
     private String path;
-    private TextView textView;
+    private Button textView;
+    private boolean isRecording;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -24,14 +26,20 @@ public class MainActivity extends AppCompatActivity {
         textView = findViewById(R.id.tv);
         path = this.getExternalCacheDir().getPath() + "/res/test.aac";
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            record = new Record(2, path, 48000, this);
-        } else {
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO}, PEMISSION_AUDIO_CODE);
+        } else {
+            record = new Record(2, path, 48000, this);
         }
         textView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                record.startRecording();
+                if (!isRecording) {
+                    record.startRecording();
+                    isRecording = true;
+                } else {
+                    isRecording = false;
+                    record.stop();
+                }
             }
         });
     }
