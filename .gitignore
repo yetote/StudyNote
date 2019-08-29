@@ -21,3 +21,5 @@ VideoDemo1/.idea/gradle.xml
 VideoDemo1/.idea/gradle.xml
 VideoDemo1/.idea/gradle.xml
 VideoDemo1/.idea/gradle.xml
+HardwareEncodeMP4/app/src/androidTest/java/com/example/hardwareencodemp4/ExampleInstrumentedTest.java
+MediaCodecDemo/app/src/androidTest/java/com/example/mediacodecdemo/ExampleInstrumentedTest.java

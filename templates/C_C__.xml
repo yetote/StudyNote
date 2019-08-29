@@ -1,0 +1,44 @@
+<templateSet group="C/C++">
+  <template name="ifn" value="if ($VAR$ == NULL) {&#10;$END$&#10;}" description="if null" toReformat="false" toShortenFQNames="true">
+    <variable name="VAR" expression="" defaultValue="" alwaysStopAt="true" />
+    <context>
+      <option name="c" value="true" />
+      <option name="cpp" value="true" />
+    </context>
+  </template>
+  <template name="if" value="if($var$==$state$){&#10;    $TODO$&#10;}" description="if" toReformat="false" toShortenFQNames="true">
+    <variable name="var" expression="" defaultValue="" alwaysStopAt="true" />
+    <variable name="state" expression="" defaultValue="" alwaysStopAt="true" />
+    <variable name="TODO" expression="" defaultValue="" alwaysStopAt="true" />
+    <context>
+      <option name="c" value="true" />
+      <option name="cpp" value="true" />
+    </context>
+  </template>
+  <template name="dlog" value="#define LOGE(LOG_TAG, ...) __android_log_print(ANDROID_LOG_ERROR,LOG_TAG,__VA_ARGS__)" description="define LOGE" toReformat="false" toShortenFQNames="true">
+    <context>
+      <option name="c" value="true" />
+      <option name="cpp" value="true" />
+    </context>
+  </template>
+  <template name="logt" value="#define $className$_TAG &quot;$className$&quot;" description="define LOG_TAG" toReformat="false" toShortenFQNames="true">
+    <variable name="className" expression="fileNameWithoutExtension()" defaultValue="" alwaysStopAt="true" />
+    <context>
+      <option name="c" value="true" />
+      <option name="cpp" value="true" />
+    </context>
+  </template>
+  <template name="dnull" value="#define null NULL" description="define null NULL" toReformat="false" toShortenFQNames="true">
+    <context>
+      <option name="c" value="true" />
+      <option name="cpp" value="true" />
+    </context>
+  </template>
+  <template name="loge" value="LOGE($ClassName$_TAG,&quot;%s:&quot;,__func__);" description="c++ loge" toReformat="false" toShortenFQNames="true">
+    <variable name="ClassName" expression="fileNameWithoutExtension()" defaultValue="" alwaysStopAt="true" />
+    <context>
+      <option name="c" value="true" />
+      <option name="cpp" value="true" />
+    </context>
+  </template>
+</templateSet>
