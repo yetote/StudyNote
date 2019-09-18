@@ -4,9 +4,9 @@
 # Sets the minimum version of CMake required to build the native library.
 
 cmake_minimum_required(VERSION 3.4.1)
-set(PATH_PROJECT D:/AndroidStudioProjects/NativeMediaDemo)
+set(PATH_PROJECT D:/AndroidStudioWorkSpace/NativeMediaDemo)
 set(LIBS_PATH ${PATH_PROJECT}/app/libs)
-set(OBOE_PATH D:/audiotest/oboe-1.2.0)
+set(OBOE_PATH D:/otherlib/oboe-1.2.0)
 
 add_subdirectory(${OBOE_PATH} ./oboe)
 
