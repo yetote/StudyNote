@@ -19,3 +19,4 @@ AndroidMediaNote/MediaPlayerDemo/app/build/generated/source/buildConfig/debug/co
 AndroidMediaNote/MediaPlayerDemo/app/src/androidTest/java/com/example/mediaplayerdemo/ExampleInstrumentedTest.java
 AndroidMediaNote/MediaPlayerDemo/app/src/test/java/com/example/mediaplayerdemo/ExampleUnitTest.java
 *.flat
+AndroidMediaNote/MediaPlayerDemo/gradlew
