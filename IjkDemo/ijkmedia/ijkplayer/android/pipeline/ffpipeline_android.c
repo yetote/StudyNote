@@ -139,19 +139,27 @@ IJKFF_Pipeline *ffpipeline_create_from_android(FFPlayer *ffp)
         return pipeline;
 
     IJKFF_Pipeline_Opaque *opaque = pipeline->opaque;
+    //设置ffplayer
     opaque->ffp                   = ffp;
+    //设置surface互斥锁
     opaque->surface_mutex         = SDL_CreateMutex();
+    //设置左声道音量
     opaque->left_volume           = 1.0f;
+    //设置右声道音量
     opaque->right_volume          = 1.0f;
     if (!opaque->surface_mutex) {
         ALOGE("ffpipeline-android:create SDL_CreateMutex failed\n");
         goto fail;
     }
-
+    //销毁
     pipeline->func_destroy              = func_destroy;
+    //视频解码器
     pipeline->func_open_video_decoder   = func_open_video_decoder;
+    //音频输出
     pipeline->func_open_audio_output    = func_open_audio_output;
+    //初始化视频解码器
     pipeline->func_init_video_decoder   = func_init_video_decoder;
+    //配置视频解码器
     pipeline->func_config_video_decoder = func_config_video_decoder;
 
     return pipeline;

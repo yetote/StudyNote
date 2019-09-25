@@ -76,21 +76,24 @@ static IjkMediaPlayer *jni_get_media_player(JNIEnv *env, jobject thiz) {
 
 static IjkMediaPlayer *jni_set_media_player(JNIEnv *env, jobject thiz, IjkMediaPlayer *mp) {
     pthread_mutex_lock(&g_clazz.mutex);
-
+    //获取java层的ijkmediaplayer
     IjkMediaPlayer *old = (IjkMediaPlayer *) (intptr_t) J4AC_IjkMediaPlayer__mNativeMediaPlayer__get__catchAll(
             env, thiz);
+    //如果mp存在,则其引用计数+1
     if (mp) {
         ijkmp_inc_ref(mp);
     }
+    //这个方法应该是设置java层的mediaplayer为native层的mp
     J4AC_IjkMediaPlayer__mNativeMediaPlayer__set__catchAll(env, thiz, (intptr_t) mp);
 
     pthread_mutex_unlock(&g_clazz.mutex);
 
     // NOTE: ijkmp_dec_ref may block thread
     if (old != NULL) {
+        //销毁ijkplayer
         ijkmp_dec_ref_p(&old);
     }
-
+    //返回的必定是一个nullptr
     return old;
 }
 
@@ -770,9 +773,11 @@ IjkMediaPlayer_native_setup(JNIEnv *env, jobject thiz, jobject weak_this) {
     //判断是否正常初始化
     JNI_CHECK_GOTO(mp, env, "java/lang/OutOfMemoryError",
                    "mpjni: native_setup: ijkmp_create() failed", LABEL_RETURN);
-
+    //关联java层的player与native层的player
     jni_set_media_player(env, thiz, mp);
+    //关联mp中的弱引用与java层传递进来的弱引用
     ijkmp_set_weak_thiz(mp, (*env)->NewGlobalRef(env, weak_this));
+    //
     ijkmp_set_inject_opaque(mp, ijkmp_get_weak_thiz(mp));
     ijkmp_set_ijkio_inject_opaque(mp, ijkmp_get_weak_thiz(mp));
     ijkmp_android_set_mediacodec_select_callback(mp, mediacodec_select_callback,
