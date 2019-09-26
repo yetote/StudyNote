@@ -295,11 +295,13 @@ void ijkmp_inc_ref(IjkMediaPlayer *mp) {
 void ijkmp_dec_ref(IjkMediaPlayer *mp) {
     if (!mp)
         return;
-
+    //引用计数-1
     int ref_count = __sync_sub_and_fetch(&mp->ref_count, 1);
     if (ref_count == 0) {
         MPTRACE("ijkmp_dec_ref(): ref=0\n");
+        //停止ffplayer
         ijkmp_shutdown(mp);
+        //销毁ffplayer
         ijkmp_destroy_p(&mp);
     }
 }
