@@ -100,6 +100,7 @@ void ijkmp_io_stat_complete_register(void (*cb)(const char *url,
 
 void ijkmp_change_state_l(IjkMediaPlayer *mp, int new_state) {
     mp->mp_state = new_state;
+    //利用ffplayer中的msg_queue，把FFP_MSG_PLAYBACK_STATE_CHANGED填充到队列中
     ffp_notify_msg1(mp->ffplayer, FFP_MSG_PLAYBACK_STATE_CHANGED);
 }
 
@@ -318,7 +319,7 @@ void ijkmp_dec_ref_p(IjkMediaPlayer **pmp) {
 static int ijkmp_set_data_source_l(IjkMediaPlayer *mp, const char *url) {
     assert(mp);
     assert(url);
-
+    //没搞懂这段代码，看起来应该是检查状态的
     // MPST_RET_IF_EQ(mp->mp_state, MP_STATE_IDLE);
     MPST_RET_IF_EQ(mp->mp_state, MP_STATE_INITIALIZED);
     MPST_RET_IF_EQ(mp->mp_state, MP_STATE_ASYNC_PREPARING);
@@ -331,10 +332,11 @@ static int ijkmp_set_data_source_l(IjkMediaPlayer *mp, const char *url) {
     MPST_RET_IF_EQ(mp->mp_state, MP_STATE_END);
 
     freep((void **) &mp->data_source);
+    //设置c层的data_source为url
     mp->data_source = strdup(url);
     if (!mp->data_source)
         return EIJK_OUT_OF_MEMORY;
-
+    //修改下mp的state为初始化状态
     ijkmp_change_state_l(mp, MP_STATE_INITIALIZED);
     return 0;
 }
@@ -344,6 +346,7 @@ int ijkmp_set_data_source(IjkMediaPlayer *mp, const char *url) {
     assert(url);
     MPTRACE("ijkmp_set_data_source(url=\"%s\")\n", url);
     pthread_mutex_lock(&mp->mutex);
+    //设置c层的data_source属性，修改mp的状态，并利用ffplayer的msg_queue将FFP_MSG_PLAYBACK_STATE_CHANGED放入队列用于通知别的进程
     int retval = ijkmp_set_data_source_l(mp, url);
     pthread_mutex_unlock(&mp->mutex);
     MPTRACE("ijkmp_set_data_source(url=\"%s\")=%d\n", url, retval);

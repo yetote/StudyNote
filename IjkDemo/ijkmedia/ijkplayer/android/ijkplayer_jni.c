@@ -63,7 +63,7 @@ static bool mediacodec_select_callback(void *opaque, ijkmp_mediacodecinfo_contex
 
 static IjkMediaPlayer *jni_get_media_player(JNIEnv *env, jobject thiz) {
     pthread_mutex_lock(&g_clazz.mutex);
-
+    //获取java层的ijkmediaplayer
     IjkMediaPlayer *mp = (IjkMediaPlayer *) (intptr_t) J4AC_IjkMediaPlayer__mNativeMediaPlayer__get__catchAll(
             env, thiz);
     if (mp) {
@@ -101,10 +101,9 @@ static int64_t jni_set_media_data_source(JNIEnv *env, jobject thiz, jobject medi
     int64_t nativeMediaDataSource = 0;
 
     pthread_mutex_lock(&g_clazz.mutex);
-
-    jobject
-            old = (jobject)(intptr_t)
-    J4AC_IjkMediaPlayer__mNativeMediaDataSource__get__catchAll(env, thiz);
+    //从java层获取旧的mNativeMediaDataSource
+    jobject old = (jobject)(intptr_t)J4AC_IjkMediaPlayer__mNativeMediaDataSource__get__catchAll(env, thiz);
+    //释放
     if (old) {
         J4AC_IMediaDataSource__close__catchAll(env, old);
         J4A_DeleteGlobalRef__p(env, &old);
@@ -112,6 +111,7 @@ static int64_t jni_set_media_data_source(JNIEnv *env, jobject thiz, jobject medi
     }
 
     if (media_data_source) {
+        //设置新的
         jobject global_media_data_source = (*env)->NewGlobalRef(env, media_data_source);
         if (J4A_ExceptionCheck__catchAll(env) || !global_media_data_source)
             goto fail;
@@ -215,12 +215,13 @@ IjkMediaPlayer_setDataSourceCallback(JNIEnv *env, jobject thiz, jobject callback
     int retval = 0;
     char uri[128];
     int64_t nativeMediaDataSource = 0;
+    //获取新的ijkmediaplayer
     IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
     JNI_CHECK_GOTO(callback, env, "java/lang/IllegalArgumentException",
                    "mpjni: setDataSourceCallback: null fd", LABEL_RETURN);
     JNI_CHECK_GOTO(mp, env, "java/lang/IllegalStateException",
                    "mpjni: setDataSourceCallback: null mp", LABEL_RETURN);
-
+    //设置java层的mNativeMediaDataSource
     nativeMediaDataSource = jni_set_media_data_source(env, thiz, callback);
     JNI_CHECK_GOTO(nativeMediaDataSource, env, "java/lang/IllegalStateException",
                    "mpjni: jni_set_media_data_source: NewGlobalRef", LABEL_RETURN);
@@ -230,12 +231,13 @@ IjkMediaPlayer_setDataSourceCallback(JNIEnv *env, jobject thiz, jobject callback
     "\n", nativeMediaDataSource);
     snprintf(uri, sizeof(uri), "ijkmediadatasource:%"
     PRId64, nativeMediaDataSource);
-
+    //这里是设置c层的mp中的路径，修改mp的状态，通知别的线程现在是FFP_MSG_PLAYBACK_STATE_CHANGED状态
     retval = ijkmp_set_data_source(mp, uri);
 
     IJK_CHECK_MPRET_GOTO(retval, env, LABEL_RETURN);
 
     LABEL_RETURN:
+    //销毁并将引用计数-1
     ijkmp_dec_ref_p(&mp);
 }
 

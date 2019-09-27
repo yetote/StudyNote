@@ -48,7 +48,6 @@ public class MainActivity extends AppCompatActivity {
     private void createPlayer() {
         if (ijkMediaPlayer == null) {
             ijkMediaPlayer = new IjkMediaPlayer();
-            MediaPlayer mediaPlayer = new MediaPlayer();
             ijkMediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
             try {
                 ijkMediaPlayer.setDataSource(path);
