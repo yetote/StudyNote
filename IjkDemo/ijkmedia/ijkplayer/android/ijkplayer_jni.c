@@ -777,9 +777,11 @@ IjkMediaPlayer_native_setup(JNIEnv *env, jobject thiz, jobject weak_this) {
     jni_set_media_player(env, thiz, mp);
     //关联mp中的弱引用与java层传递进来的弱引用
     ijkmp_set_weak_thiz(mp, (*env)->NewGlobalRef(env, weak_this));
-    //
+    //该函数重设了mp中的ffpayer的app_ctx
     ijkmp_set_inject_opaque(mp, ijkmp_get_weak_thiz(mp));
+    //和上个方法作用一致,设置了ijkio_manager_ctx
     ijkmp_set_ijkio_inject_opaque(mp, ijkmp_get_weak_thiz(mp));
+    //初始化硬件相关设置
     ijkmp_android_set_mediacodec_select_callback(mp, mediacodec_select_callback,
                                                  ijkmp_get_weak_thiz(mp));
 
@@ -1229,7 +1231,7 @@ JNI_OnLoad(JavaVM *vm,void *reserved){
     // FindClass returns LocalReference
     IJK_FIND_JAVA_CLASS(env, g_clazz.clazz, JNI_CLASS_IJKPLAYER);
     (*env)->RegisterNatives(env, g_clazz.clazz, g_methods,NELEM(g_methods));
-    //执行ffmpeg初始化操作,并重设了URLProtocol中的函数指针
+    //执行ffmpeg初始化操作,并初始化了URLProtocol中的函数指针
     ijkmp_global_init();
     //将inject_callback传递给ff_ffplay.c
     ijkmp_global_set_inject_callback(inject_callback);

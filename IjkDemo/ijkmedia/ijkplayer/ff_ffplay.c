@@ -4220,6 +4220,7 @@ void *ffp_set_inject_opaque(FFPlayer *ffp, void *opaque) {
 
     av_application_closep(&ffp->app_ctx);
     av_application_open(&ffp->app_ctx, ffp);
+    //将app_ctx加入到ffplayer中的format_opts字典中,key为ijkapplication
     ffp_set_option_int(ffp, FFP_OPT_CATEGORY_FORMAT, "ijkapplication", (int64_t)(intptr_t)
     ffp->app_ctx);
 

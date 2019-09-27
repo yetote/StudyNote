@@ -222,7 +222,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
      * may result in an exception.
      * </p>
      */
-    public IjkMediaPlayer() {
+        public IjkMediaPlayer() {
         //无参的构造方法会调用一个有参(loadlib)的构造方法
         this(sLocalLibLoader);
     }

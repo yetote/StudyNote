@@ -130,6 +130,7 @@ void *ijkmp_set_inject_opaque(IjkMediaPlayer *mp, void *opaque) {
     assert(mp);
 
     MPTRACE("%s(%p)\n", __func__, opaque);
+    //该函数对ijkplayer中的ffplayer中的app_ctx做了一些操作
     void *prev_weak_thiz = ffp_set_inject_opaque(mp->ffplayer, opaque);
     MPTRACE("%s()=void\n", __func__);
     return prev_weak_thiz;

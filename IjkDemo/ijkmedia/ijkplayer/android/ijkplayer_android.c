@@ -120,6 +120,7 @@ void ijkmp_android_set_mediacodec_select_callback(IjkMediaPlayer *mp, bool (*cal
     pthread_mutex_lock(&mp->mutex);
 
     if (mp && mp->ffplayer && mp->ffplayer->pipeline) {
+        //初始化硬件相关的接口回调与mediacodec_select_callback_opaque属性
         ffpipeline_set_mediacodec_select_callback(mp->ffplayer->pipeline, callback, opaque);
     }
 
