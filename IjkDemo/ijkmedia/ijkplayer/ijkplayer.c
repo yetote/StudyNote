@@ -361,7 +361,7 @@ static int ijkmp_msg_loop(void *arg) {
 
 static int ijkmp_prepare_async_l(IjkMediaPlayer *mp) {
     assert(mp);
-
+    //宏定义用于修改mp的状态为EIJK_INVALID_STATE
     MPST_RET_IF_EQ(mp->mp_state, MP_STATE_IDLE);
     // MPST_RET_IF_EQ(mp->mp_state, MP_STATE_INITIALIZED);
     MPST_RET_IF_EQ(mp->mp_state, MP_STATE_ASYNC_PREPARING);
@@ -374,7 +374,7 @@ static int ijkmp_prepare_async_l(IjkMediaPlayer *mp) {
     MPST_RET_IF_EQ(mp->mp_state, MP_STATE_END);
 
     assert(mp->data_source);
-
+    //修改mp的状态为PREPARING
     ijkmp_change_state_l(mp, MP_STATE_ASYNC_PREPARING);
 
     msg_queue_start(&mp->ffplayer->msg_queue);

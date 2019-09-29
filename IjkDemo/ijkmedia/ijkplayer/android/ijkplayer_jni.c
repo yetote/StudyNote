@@ -279,6 +279,7 @@ static void
 IjkMediaPlayer_prepareAsync(JNIEnv *env, jobject thiz) {
     MPTRACE("%s\n", __func__);
     int retval = 0;
+    //获取java层的ijkplayer实例
     IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
     JNI_CHECK_GOTO(mp, env, "java/lang/IllegalStateException", "mpjni: prepareAsync: null mp",
                    LABEL_RETURN);
