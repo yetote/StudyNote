@@ -80,5 +80,6 @@ int ffpipeline_config_video_decoder(IJKFF_Pipeline *pipeline, FFPlayer *ffp)
 
 SDL_Aout *ffpipeline_open_audio_output(IJKFF_Pipeline *pipeline, FFPlayer *ffp)
 {
+    //打开音频输出，该方法定义在ijkmedia/ijkplayer/android/pipeline_android.c中
     return pipeline->func_open_audio_output(pipeline, ffp);
 }

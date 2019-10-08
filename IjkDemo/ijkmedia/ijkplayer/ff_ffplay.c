@@ -3718,19 +3718,23 @@ static VideoState *stream_open(FFPlayer *ffp, const char *filename, AVInputForma
     is = av_mallocz(sizeof(VideoState));
     if (!is)
         return NULL;
+    //复制uri
     is->filename = av_strdup(filename);
     if (!is->filename)
         goto fail;
+    //这个参数为null
     is->iformat = iformat;
     is->ytop = 0;
     is->xleft = 0;
 #if defined(__ANDROID__)
     if (ffp->soundtouch_enable) {
+        //这个方法没找到定义
         is->handle = ijk_soundtouch_create();
     }
 #endif
 
     /* start video display */
+    //这里初始化了三个队列，跟别为视频、字幕、音频
     if (frame_queue_init(&is->pictq, &is->videoq, ffp->pictq_size, 1) < 0)
         goto fail;
     if (frame_queue_init(&is->subpq, &is->subtitleq, SUBPICTURE_QUEUE_SIZE, 0) < 0)
@@ -3757,7 +3761,7 @@ static VideoState *stream_open(FFPlayer *ffp, const char *filename, AVInputForma
         av_log(NULL, AV_LOG_FATAL, "SDL_CreateCond(): %s\n", SDL_GetError());
         ffp->enable_accurate_seek = 0;
     }
-
+    //设置内部时钟
     init_clock(&is->vidclk, &is->videoq.serial);
     init_clock(&is->audclk, &is->audioq.serial);
     init_clock(&is->extclk, &is->extclk.serial);
@@ -3777,7 +3781,7 @@ static VideoState *stream_open(FFPlayer *ffp, const char *filename, AVInputForma
     is->accurate_seek_mutex = SDL_CreateMutex();
     ffp->is = is;
     is->pause_req = !ffp->start_on_prepared;
-
+    //这里调用了video_refresh_thread
     is->video_refresh_tid = SDL_CreateThreadEx(&is->_video_refresh_tid, video_refresh_thread, ffp,
                                                "ff_vout");
     if (!is->video_refresh_tid) {
@@ -4318,7 +4322,7 @@ int ffp_prepare_async_l(FFPlayer *ffp, const char *file_name) {
     assert(ffp);
     assert(!ffp->is);
     assert(file_name);
-
+    //判断是否为rtmp或者rtsp直播流
     if (av_stristart(file_name, "rtmp", NULL) ||
         av_stristart(file_name, "rtsp", NULL)) {
         // There is total different meaning for 'timeout' option in rtmp
@@ -4327,6 +4331,7 @@ int ffp_prepare_async_l(FFPlayer *ffp, const char *file_name) {
     }
 
     /* there is a length limit in avformat */
+    //判断url的长度
     if (strlen(file_name) + 1 > 1024) {
         av_log(ffp, AV_LOG_ERROR, "%s too long url\n", __func__);
         if (avio_find_protocol_name("ijklongurl:")) {
@@ -4350,9 +4355,10 @@ int ffp_prepare_async_l(FFPlayer *ffp, const char *file_name) {
     ffp_show_dict(ffp, "sws-opts   ", ffp->sws_dict);
     ffp_show_dict(ffp, "swr-opts   ", ffp->swr_opts);
     av_log(NULL, AV_LOG_INFO, "===================\n");
-
+    //设置ffplayer的option
     av_opt_set_dict(ffp, &ffp->player_opts);
     if (!ffp->aout) {
+        //打开音频输出
         ffp->aout = ffpipeline_open_audio_output(ffp->pipeline, ffp);
         if (!ffp->aout)
             return -1;
