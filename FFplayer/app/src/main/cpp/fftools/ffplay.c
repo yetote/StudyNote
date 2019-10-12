@@ -2819,19 +2819,23 @@ static int read_thread(void *arg) {
     is->last_audio_stream = is->audio_stream = -1;
     is->last_subtitle_stream = is->subtitle_stream = -1;
     is->eof = 0;
-
+    //分配AVFmtCtx
     ic = avformat_alloc_context();
     if (!ic) {
         av_log(NULL, AV_LOG_FATAL, "Could not allocate context.\n");
         ret = AVERROR(ENOMEM);
         goto fail;
     }
+    //todo 这一段代码是设置文件流回调，暂时先放一放
     ic->interrupt_callback.callback = decode_interrupt_cb;
     ic->interrupt_callback.opaque = is;
+    //这里是过去format_opts字典中的scan_all_pmts，最后一个参数通过查询得知为检索方式
     if (!av_dict_get(format_opts, "scan_all_pmts", NULL, AV_DICT_MATCH_CASE)) {
+        //不存在的话重新设置下value，为1
         av_dict_set(&format_opts, "scan_all_pmts", "1", AV_DICT_DONT_OVERWRITE);
         scan_all_pmts_set = 1;
     }
+    //这里为打开文件或者网络流
     err = avformat_open_input(&ic, is->filename, is->iformat, &format_opts);
     if (err < 0) {
         print_error(is->filename, err);
@@ -2846,6 +2850,7 @@ static int read_thread(void *arg) {
         ret = AVERROR_OPTION_NOT_FOUND;
         goto fail;
     }
+    //这里将VideoState的AVFormatContext复制过来，不过，不应该用avformat_copy呢？
     is->ic = ic;
 
     if (genpts)
