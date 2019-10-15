@@ -10,7 +10,7 @@ int readFrameCallBack(void *ctx);
 
 int readFrameCallBack(void *ctx) {
     LOGE(Decode_TAG, "%s:读取数据无响应", __func__);
-    return 1;
+    return 0;
 }
 
 
@@ -27,37 +27,44 @@ void Decode::prepare(std::string path) {
         return;
     }
     int audioIndex = -1;
-    for (int i = 0; i < pFmtCtx->nb_streams; ++i) {
-        if (pFmtCtx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO) {
-            audioIndex = i;
-            break;
-        }
-    }
+//    avformat_find_stream_info(pFmtCtx, nullptr);
+    audioIndex = av_find_best_stream(pFmtCtx, AVMEDIA_TYPE_VIDEO, -1, AVMEDIA_TYPE_AUDIO, nullptr, 0);
+//    for (int i = 0; i < pFmtCtx->nb_streams; ++i) {
+//        if (pFmtCtx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO) {
+//            audioIndex = i;
+//            break;
+//        }
+//    }
+    LOGE(Decode_TAG, "%s:索引%d", __func__, audioIndex);
     if (audioIndex == -1) {
         LOGE(Decode_TAG, "%s:未找到流信息", __func__);
+        showErr(rst);
         return;
+    } else {
+        showErr(rst);
     }
-    pStream = pFmtCtx->streams[audioIndex];
-    pCodec = avcodec_find_decoder(pStream->codecpar->codec_id);
-    pCodecCtx = avcodec_alloc_context3(pCodec);
-    avcodec_parameters_to_context(pCodecCtx, pStream->codecpar);
-    avcodec_open2(pCodecCtx, pCodec, nullptr);
-    LOGE(Decode_TAG, "%s:打开成功", __func__);
-
-    AVPacket *packet = av_packet_alloc();
-    AVFrame *pFrame = av_frame_alloc();
-
-    if (av_read_frame(pFmtCtx, packet) == 0) {
-        rst = avcodec_send_packet(pCodecCtx, packet);
-        if (rst == 0) {
-            avcodec_receive_frame(pCodecCtx, pFrame);
-        } else {
-            showErr(rst);
-        }
-    } else{
-        LOGE(Decode_TAG,"%s:err",__func__);
-    }
-    LOGE(Decode_TAG,"%s:解码完成",__func__);
+//    pStream = pFmtCtx->streams[audioIndex];
+//    av_dump_format(pFmtCtx, audioIndex, path.c_str(), 0);
+//    pCodec = avcodec_find_decoder(pStream->codecpar->codec_id);
+//    pCodecCtx = avcodec_alloc_context3(pCodec);
+//    avcodec_parameters_to_context(pCodecCtx, pStream->codecpar);
+//    avcodec_open2(pCodecCtx, pCodec, nullptr);
+//    LOGE(Decode_TAG, "%s:打开成功", __func__);
+//
+//    AVPacket *packet = av_packet_alloc();
+//    AVFrame *pFrame = av_frame_alloc();
+//
+//    if (av_read_frame(pFmtCtx, packet) == 0) {
+//        rst = avcodec_send_packet(pCodecCtx, packet);
+//        if (rst == 0) {
+//            avcodec_receive_frame(pCodecCtx, pFrame);
+//        } else {
+//            showErr(rst);
+//        }
+//    } else {
+//        LOGE(Decode_TAG, "%s:err", __func__);
+//    }
+//    LOGE(Decode_TAG, "%s:解码完成", __func__);
 }
 
 

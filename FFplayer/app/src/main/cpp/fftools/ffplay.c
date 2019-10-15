@@ -214,7 +214,7 @@ typedef struct VideoState {
     int64_t seek_rel;
     int read_pause_return;
     AVFormatContext *ic;
-    int realtime;
+    int realtime; //是否为直播流
 
     Clock audclk;
     Clock vidclk;
@@ -1383,6 +1383,7 @@ static double get_clock(Clock *c) {
         return c->pts_drift + time - (time - c->last_updated) * (1.0 - c->speed);
     }
 }
+
 /*
  * set_clock_at
  * @Param Clock c
@@ -2596,6 +2597,9 @@ static int audio_open(void *opaque, int64_t wanted_channel_layout, int wanted_nb
 }
 
 /* open a given stream. Return 0 if OK */
+/*
+ * 打开一个给定的流，成功返回0
+ * */
 static int stream_component_open(VideoState *is, int stream_index) {
     AVFormatContext *ic = is->ic;
     AVCodecContext *avctx;
@@ -2610,21 +2614,22 @@ static int stream_component_open(VideoState *is, int stream_index) {
 
     if (stream_index < 0 || stream_index >= ic->nb_streams)
         return -1;
-
+    //分配codecCtx上下文
     avctx = avcodec_alloc_context3(NULL);
     if (!avctx)
         return AVERROR(ENOMEM);
-
+    //赋值参数
     ret = avcodec_parameters_to_context(avctx, ic->streams[stream_index]->codecpar);
     if (ret < 0)
         goto fail;
     avctx->pkt_timebase = ic->streams[stream_index]->time_base;
-
+    //寻找解码器
     codec = avcodec_find_decoder(avctx->codec_id);
 
     switch (avctx->codec_type) {
         case AVMEDIA_TYPE_AUDIO   :
             is->last_audio_stream = stream_index;
+            //这里的codecname是命令行里面输入的
             forced_codec_name = audio_codec_name;
             break;
         case AVMEDIA_TYPE_SUBTITLE:
@@ -2637,6 +2642,7 @@ static int stream_component_open(VideoState *is, int stream_index) {
             break;
     }
     if (forced_codec_name)
+        //通过codecname寻找解码器
         codec = avcodec_find_decoder_by_name(forced_codec_name);
     if (!codec) {
         if (forced_codec_name)
@@ -2775,7 +2781,9 @@ static int stream_has_enough_packets(AVStream *st, int stream_id, PacketQueue *q
            queue->nb_packets > MIN_FRAMES &&
            (!queue->duration || av_q2d(st->time_base) * queue->duration > 1.0);
 }
-
+/*
+ * 这个方法判断是不是直播流
+ * */
 static int is_realtime(AVFormatContext *s) {
     if (!strcmp(s->iformat->name, "rtp")
         || !strcmp(s->iformat->name, "rtsp")
@@ -2826,7 +2834,11 @@ static int read_thread(void *arg) {
         ret = AVERROR(ENOMEM);
         goto fail;
     }
-    //todo 这一段代码是设置文件流回调，暂时先放一放
+    /*
+     * 好了，interrupt_callback的作用是增加i/o超时回调，
+     * 回调的方法为decode_interrupt_cb
+     * 目前已确认在执行avformat_open_input方法时会回调该方法两次
+     * */
     ic->interrupt_callback.callback = decode_interrupt_cb;
     ic->interrupt_callback.opaque = is;
     //这里是过去format_opts字典中的scan_all_pmts，最后一个参数通过查询得知为检索方式
@@ -2855,16 +2867,18 @@ static int read_thread(void *arg) {
 
     if (genpts)
         ic->flags |= AVFMT_FLAG_GENPTS;
-
+    //这个方法表示将VideoState放入到每一个packet中
     av_format_inject_global_side_data(ic);
 
     if (find_stream_info) {
+        //为ic中的每个流创建一个字典，字典中包含codec_opts
         AVDictionary **opts = setup_find_stream_info_opts(ic, codec_opts);
         int orig_nb_streams = ic->nb_streams;
-
+        //找流
         err = avformat_find_stream_info(ic, opts);
 
         for (i = 0; i < orig_nb_streams; i++)
+            //释放字典？？没干啥就释放了？
             av_dict_free(&opts[i]);
         av_freep(&opts);
 
@@ -2875,8 +2889,9 @@ static int read_thread(void *arg) {
             goto fail;
         }
     }
-
+    //pb为io的上下文
     if (ic->pb)
+        //eof_reached意义为是否到达文件末尾
         ic->pb->eof_reached = 0; // FIXME hack, ffplay maybe should not use avio_feof() to test for the end
 
     if (seek_by_bytes < 0)
@@ -2889,22 +2904,27 @@ static int read_thread(void *arg) {
         window_title = av_asprintf("%s - %s", t->value, input_filename);
 
     /* if seeking requested, we execute it */
+    /*这段是执行seek操作
+     * AV_NOPTS_VALUE是未定义的时间戳
+     */
     if (start_time != AV_NOPTS_VALUE) {
         int64_t timestamp;
 
         timestamp = start_time;
         /* add the stream start time */
+        //添加流开始时间
         if (ic->start_time != AV_NOPTS_VALUE)
             timestamp += ic->start_time;
+        //seek文件
         ret = avformat_seek_file(ic, -1, INT64_MIN, timestamp, INT64_MAX, 0);
         if (ret < 0) {
             av_log(NULL, AV_LOG_WARNING, "%s: could not seek to position %0.3f\n",
                    is->filename, (double) timestamp / AV_TIME_BASE);
         }
     }
-
+    //判断是否为直播流
     is->realtime = is_realtime(ic);
-
+    //打印formatContext
     if (show_status)
         av_dump_format(ic, 0, is->filename, 0);
 
@@ -2913,6 +2933,11 @@ static int read_thread(void *arg) {
         enum AVMediaType type = st->codecpar->codec_type;
         st->discard = AVDISCARD_ALL;
         if (type >= 0 && wanted_stream_spec[type] && st_index[type] == -1)
+            /*
+             * avformat_match_stream_specifier这个方法是用来检测fmtCtx中的stream是否包含第三个参数
+             * 这里的作用猜测为判断流的类别（雾）
+             * 这里是根据流的类型匹配流索引
+             * */
             if (avformat_match_stream_specifier(ic, st, wanted_stream_spec[type]) > 0)
                 st_index[type] = i;
     }
@@ -2925,16 +2950,19 @@ static int read_thread(void *arg) {
     }
 
     if (!video_disable)
+        //寻找视频流索引
         st_index[AVMEDIA_TYPE_VIDEO] =
                 av_find_best_stream(ic, AVMEDIA_TYPE_VIDEO,
                                     st_index[AVMEDIA_TYPE_VIDEO], -1, NULL, 0);
     if (!audio_disable)
+        //这是意味着有有音频流就必须有视频流
         st_index[AVMEDIA_TYPE_AUDIO] =
                 av_find_best_stream(ic, AVMEDIA_TYPE_AUDIO,
                                     st_index[AVMEDIA_TYPE_AUDIO],
                                     st_index[AVMEDIA_TYPE_VIDEO],
                                     NULL, 0);
     if (!video_disable && !subtitle_disable)
+        //这里确定了字幕流必须与音频流或视频流相关
         st_index[AVMEDIA_TYPE_SUBTITLE] =
                 av_find_best_stream(ic, AVMEDIA_TYPE_SUBTITLE,
                                     st_index[AVMEDIA_TYPE_SUBTITLE],
@@ -2945,15 +2973,19 @@ static int read_thread(void *arg) {
 
     is->show_mode = show_mode;
     if (st_index[AVMEDIA_TYPE_VIDEO] >= 0) {
+        // 确定了视频流与对应的解码器信息
         AVStream *st = ic->streams[st_index[AVMEDIA_TYPE_VIDEO]];
         AVCodecParameters *codecpar = st->codecpar;
+        //获取sar采样纵横比
         AVRational sar = av_guess_sample_aspect_ratio(ic, st, NULL);
         if (codecpar->width)
+            //不看了，这里是设置出的窗口大小为视频的宽和高
             set_default_window_size(codecpar->width, codecpar->height, sar);
     }
 
     /* open the streams */
     if (st_index[AVMEDIA_TYPE_AUDIO] >= 0) {
+        //打开音频流
         stream_component_open(is, st_index[AVMEDIA_TYPE_AUDIO]);
     }
 
@@ -3195,7 +3227,7 @@ static VideoState *stream_open(const char *filename, AVInputFormat *iformat) {
     is->muted = 0;
     //同步方式
     is->av_sync_type = av_sync_type;
-    //这里创建了读线程，执行了read_thread方法
+    //这里创建了读线程，执行了read_thread方法,这里跟踪下read_thread方法
     is->read_tid = SDL_CreateThread(read_thread, "read_thread", is);
     if (!is->read_tid) {
         av_log(NULL, AV_LOG_FATAL, "SDL_CreateThread(): %s\n", SDL_GetError());
@@ -3723,6 +3755,7 @@ static const OptionDef options[] = {
          "number of filter threads per graph"},
         {NULL,},
 };
+
 /*这个方法打印了*/
 static void show_usage(void) {
     av_log(NULL, AV_LOG_INFO, "Simple media player\n");
