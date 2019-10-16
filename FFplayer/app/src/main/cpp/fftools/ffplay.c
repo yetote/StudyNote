@@ -137,7 +137,7 @@ typedef struct AudioParams {
     int64_t channel_layout;
     enum AVSampleFormat fmt;
     int frame_size;
-    int bytes_per_sec;
+    int bytes_per_sec;//每秒读多少字节
 } AudioParams;
 
 typedef struct Clock {
@@ -240,7 +240,7 @@ typedef struct VideoState {
     int audio_diff_avg_count;
     AVStream *audio_st;
     PacketQueue audioq;
-    int audio_hw_buf_size;
+    int audio_hw_buf_size; //硬件缓冲区大小
     uint8_t *audio_buf;
     uint8_t *audio_buf1;
     unsigned int audio_buf_size; /* in bytes */
@@ -677,6 +677,7 @@ static void decoder_destroy(Decoder *d) {
 }
 
 static void frame_queue_unref_item(Frame *vp) {
+    //嗯果然是解引用
     av_frame_unref(vp->frame);
     avsubtitle_free(&vp->sub);
 }
@@ -753,6 +754,7 @@ static Frame *frame_queue_peek_writable(FrameQueue *f) {
 
 static Frame *frame_queue_peek_readable(FrameQueue *f) {
     /* wait until we have a readable a new frame */
+    //这段代码看起来是从队列里获取新的帧
     SDL_LockMutex(f->mutex);
     while (f->size - f->rindex_shown <= 0 &&
            !f->pktq->abort_request) {
@@ -762,7 +764,12 @@ static Frame *frame_queue_peek_readable(FrameQueue *f) {
 
     if (f->pktq->abort_request)
         return NULL;
-
+    /*
+     * 这个返回有点意思
+     * rindex读索引
+     * rindex_shown读显示
+     *
+     * */
     return &f->queue[(f->rindex + f->rindex_shown) % f->max_size];
 }
 
@@ -780,10 +787,13 @@ static void frame_queue_next(FrameQueue *f) {
         f->rindex_shown = 1;
         return;
     }
+    //这个方法看起来是解引用
     frame_queue_unref_item(&f->queue[f->rindex]);
+    //循环读取
     if (++f->rindex == f->max_size)
         f->rindex = 0;
     SDL_LockMutex(f->mutex);
+    //这个size应该表示未读数量
     f->size--;
     SDL_CondSignal(f->cond);
     SDL_UnlockMutex(f->mutex);
@@ -791,6 +801,13 @@ static void frame_queue_next(FrameQueue *f) {
 
 /* return the number of undisplayed frames in the queue */
 static int frame_queue_nb_remaining(FrameQueue *f) {
+    /*、
+     * 返回队列中剩余的帧数
+     * 在这里看出帧队列在解码完成后并没有选择直接pop吊数据
+     * 而是通过其中存储的next指针指向下一个节点
+     * 换句话说这是其实是用queue实现的链表
+     * 作用是方便循环播放
+     * */
     return f->size - f->rindex_shown;
 }
 
@@ -2300,6 +2317,9 @@ static void update_sample_display(VideoState *is, short *samples, int samples_si
 
 /* return the wanted number of samples to get better sync if sync_type is video
  * or external master clock */
+/*
+ * 这里开始对音频数据进行同步
+ * */
 static int synchronize_audio(VideoState *is, int nb_samples) {
     int wanted_nb_samples = nb_samples;
 
@@ -2359,21 +2379,32 @@ static int audio_decode_frame(VideoState *is) {
 
     do {
 #if defined(_WIN32)
+        //如果未读的帧数不为0的话，执行循环
         while (frame_queue_nb_remaining(&is->sampq) == 0) {
+            /*
+             * 当前时间戳-回调的时间戳>1_000_000*硬件缓冲区大小/每秒读多少字节
+             * 回调执行时间>数据全部写入缓冲区所需要的时间
+             * 就跳出循环
+             *
+             * */
             if ((av_gettime_relative() - audio_callback_time) > 1000000LL * is->audio_hw_buf_size / is->audio_tgt.bytes_per_sec / 2)
                 return -1;
             av_usleep (1000);
         }
 #endif
+        //frame_queue_peek_readable获取未读的帧
         if (!(af = frame_queue_peek_readable(&is->sampq)))
             return -1;
+        //这个方法修改了rindex(读索引)
         frame_queue_next(&is->sampq);
     } while (af->serial != is->audioq.serial);
-
+    //根据给定的音频参数计算所需要的缓冲区大小
     data_size = av_samples_get_buffer_size(NULL, af->frame->channels,
                                            af->frame->nb_samples,
                                            af->frame->format, 1);
 
+
+    //获取声道布局
     dec_channel_layout =
             (af->frame->channel_layout &&
              af->frame->channels == av_get_channel_layout_nb_channels(af->frame->channel_layout)) ?
@@ -2472,11 +2503,12 @@ static int audio_decode_frame(VideoState *is) {
 static void sdl_audio_callback(void *opaque, Uint8 *stream, int len) {
     VideoState *is = opaque;
     int audio_size, len1;
-
+    //时间戳
     audio_callback_time = av_gettime_relative();
 
     while (len > 0) {
         if (is->audio_buf_index >= is->audio_buf_size) {
+            //这里获取解码出来的数据大小，也就是音频解码操作在这里执行的
             audio_size = audio_decode_frame(is);
             if (audio_size < 0) {
                 /* if error, just output silence */
@@ -2527,6 +2559,7 @@ static int audio_open(void *opaque, int64_t wanted_channel_layout, int wanted_nb
     env = SDL_getenv("SDL_AUDIO_CHANNELS");
     if (env) {
         wanted_nb_channels = atoi(env);
+        //根据声道数获取声道布局
         wanted_channel_layout = av_get_default_channel_layout(wanted_nb_channels);
     }
     if (!wanted_channel_layout ||
@@ -2547,6 +2580,7 @@ static int audio_open(void *opaque, int64_t wanted_channel_layout, int wanted_nb
     wanted_spec.silence = 0;
     wanted_spec.samples = FFMAX(SDL_AUDIO_MIN_BUFFER_SIZE,
                                 2 << av_log2(wanted_spec.freq / SDL_AUDIO_MAX_CALLBACKS_PER_SEC));
+    //设置了音频回调接口
     wanted_spec.callback = sdl_audio_callback;
     wanted_spec.userdata = opaque;
     while (!(audio_dev = SDL_OpenAudioDevice(NULL, 0, &wanted_spec, &spec,
@@ -2660,20 +2694,25 @@ static int stream_component_open(VideoState *is, int stream_index) {
         av_log(avctx, AV_LOG_WARNING,
                "The maximum value for lowres supported by the decoder is %d\n",
                codec->max_lowres);
+        //解码器支持的崔迪分辨率
         stream_lowres = codec->max_lowres;
     }
     avctx->lowres = stream_lowres;
 
     if (fast)
         avctx->flags2 |= AV_CODEC_FLAG2_FAST;
-
+    //设置解码参数
     opts = filter_codec_opts(codec_opts, avctx->codec_id, ic, ic->streams[stream_index], codec);
     if (!av_dict_get(opts, "threads", NULL, 0))
+        //像字典中设置线程
         av_dict_set(&opts, "threads", "auto", 0);
     if (stream_lowres)
+        //设置最低分辨率
         av_dict_set_int(&opts, "lowres", stream_lowres, 0);
     if (avctx->codec_type == AVMEDIA_TYPE_VIDEO || avctx->codec_type == AVMEDIA_TYPE_AUDIO)
+        //设置帧刷新的间隔？？？
         av_dict_set(&opts, "refcounted_frames", "1", 0);
+    //打开解码器
     if ((ret = avcodec_open2(avctx, codec, &opts)) < 0) {
         goto fail;
     }
@@ -2687,6 +2726,7 @@ static int stream_component_open(VideoState *is, int stream_index) {
     ic->streams[stream_index]->discard = AVDISCARD_DEFAULT;
     switch (avctx->codec_type) {
         case AVMEDIA_TYPE_AUDIO:
+            //滤镜
 #if CONFIG_AVFILTER
             {
                 AVFilterContext *sink;
@@ -2703,12 +2743,14 @@ static int stream_component_open(VideoState *is, int stream_index) {
                 channel_layout = av_buffersink_get_channel_layout(sink);
             }
 #else
+//采样率、声道数、声道布局
             sample_rate = avctx->sample_rate;
             nb_channels = avctx->channels;
             channel_layout = avctx->channel_layout;
 #endif
 
             /* prepare audio output */
+            //这里执行了audio_open（打开音频输出）工作
             if ((ret = audio_open(is, channel_layout, nb_channels, sample_rate, &is->audio_tgt)) <
                 0)
                 goto fail;
