@@ -11,6 +11,7 @@
 extern "C" {
 #include "includes/libavcodec/avcodec.h"
 #include "includes/libavformat/avformat.h"
+#include "includes/libavutil/time.h"
 };
 #define LOGE(LOG_TAG, ...) __android_log_print(ANDROID_LOG_ERROR,LOG_TAG,__VA_ARGS__)
 #define Decode_TAG "Decode"

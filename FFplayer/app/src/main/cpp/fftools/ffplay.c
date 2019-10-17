@@ -83,9 +83,11 @@ const int program_birth_year = 2003;
 /* If a frame duration is longer than this, it will not be duplicated to compensate AV sync */
 #define AV_SYNC_FRAMEDUP_THRESHOLD 0.1
 /* no AV correction is done if too big error */
+//误差矫正最大值
 #define AV_NOSYNC_THRESHOLD 10.0
 
 /* maximum audio speed change to get correct sync */
+//同步时最大的音频速率变化
 #define SAMPLE_CORRECTION_PERCENT_MAX 10
 
 /* external clock speed adjustment constants for realtime sources based on buffer fullness */
@@ -1393,10 +1395,14 @@ static double get_clock(Clock *c) {
     if (*c->queue_serial != c->serial)
         return NAN;
     if (c->paused) {
+        //暂停的话就返回当前时钟
         return c->pts;
     } else {
-
+        //time为当前时间
         double time = av_gettime_relative() / 1000000.0;
+        /*
+         * 更新时钟的差值+当前时间-（当前时间-最后一次更新时间）*（1.0-速度）
+         * */
         return c->pts_drift + time - (time - c->last_updated) * (1.0 - c->speed);
     }
 }
@@ -1452,9 +1458,14 @@ static void sync_clock_to_slave(Clock *c, Clock *slave) {
     if (!isnan(slave_clock) && (isnan(clock) || fabs(clock - slave_clock) > AV_NOSYNC_THRESHOLD))
         set_clock(c, slave_clock, slave->serial);
 }
-
+/*
+ * 这里获取同步放手
+ * 音频、视频、外部时钟这三种
+ * */
 static int get_master_sync_type(VideoState *is) {
+    //如果同步方式为视频为主
     if (is->av_sync_type == AV_SYNC_VIDEO_MASTER) {
+        //视频流存在
         if (is->video_st)
             return AV_SYNC_VIDEO_MASTER;
         else
@@ -2298,6 +2309,9 @@ static int subtitle_thread(void *arg) {
 }
 
 /* copy samples for viewing in editor window */
+/*
+ * 这个方法看起来是将数据复制到环形数组中
+ * */
 static void update_sample_display(VideoState *is, short *samples, int samples_size) {
     int size, len;
 
@@ -2319,30 +2333,44 @@ static void update_sample_display(VideoState *is, short *samples, int samples_si
  * or external master clock */
 /*
  * 这里开始对音频数据进行同步
+ * @return 返回需要播放的样本数量
  * */
 static int synchronize_audio(VideoState *is, int nb_samples) {
     int wanted_nb_samples = nb_samples;
 
     /* if not master, then we try to remove or add samples to correct the clock */
+    //这里获取到的同步方式为三种、音频、视频、外部时钟
+    //这里判断是否以音频为准
     if (get_master_sync_type(is) != AV_SYNC_AUDIO_MASTER) {
         double diff, avg_diff;
         int min_nb_samples, max_nb_samples;
-
+        //差值为音频当前时钟-主时钟(视频或者外部)
         diff = get_clock(&is->audclk) - get_master_clock(is);
-
+        //判断误差的绝对值是否小于误差矫正最大值
         if (!isnan(diff) && fabs(diff) < AV_NOSYNC_THRESHOLD) {
+
             is->audio_diff_cum = diff + is->audio_diff_avg_coef * is->audio_diff_cum;
             if (is->audio_diff_avg_count < AUDIO_DIFF_AVG_NB) {
                 /* not enough measures to have a correct estimate */
                 is->audio_diff_avg_count++;
             } else {
                 /* estimate the A-V difference */
+                //这个算法对应着一个未知的公式，结果为差值的平均值
                 avg_diff = is->audio_diff_cum * (1.0 - is->audio_diff_avg_coef);
-
+                //audio_diff_threshold为同步的阈值即小于阈值的时候不会去做音视频同步
                 if (fabs(avg_diff) >= is->audio_diff_threshold) {
+                    /*
+                     * 在进行音视频同步时
+                     * 以音频为基准进行同步很简单，只需要对视频帧进行丢帧或休眠就可以
+                     * 但是以视频为基准就不能进行丢帧或休眠
+                     * */
+                    //需要的样本数=原样本数+时间差*频率(采样率)
                     wanted_nb_samples = nb_samples + (int) (diff * is->audio_src.freq);
+                    //播放的最小的样本数(原样本数的90%)
                     min_nb_samples = ((nb_samples * (100 - SAMPLE_CORRECTION_PERCENT_MAX) / 100));
+                    //播放的最大的样本数(原样本数的110%)
                     max_nb_samples = ((nb_samples * (100 + SAMPLE_CORRECTION_PERCENT_MAX) / 100));
+                    //裁剪范围
                     wanted_nb_samples = av_clip(wanted_nb_samples, min_nb_samples, max_nb_samples);
                 }
                 av_log(NULL, AV_LOG_TRACE, "diff=%f adiff=%f sample_diff=%d apts=%0.3f %f\n",
@@ -2352,11 +2380,12 @@ static int synchronize_audio(VideoState *is, int nb_samples) {
         } else {
             /* too big difference : may be initial PTS errors, so
                reset A-V filter */
+            //差值太大，抢救无效了
             is->audio_diff_avg_count = 0;
             is->audio_diff_cum = 0;
         }
     }
-
+    //返回需要播放的样本数量
     return wanted_nb_samples;
 }
 
@@ -2367,6 +2396,10 @@ static int synchronize_audio(VideoState *is, int nb_samples) {
  * stored in is->audio_buf, with size in bytes given by the return
  * value.
  */
+ /*
+  * 该方法执行了音频的解码、音频同步到视频、重采样
+  * 最终返回一帧的大小
+  * */
 static int audio_decode_frame(VideoState *is) {
     int data_size, resampled_data_size;
     int64_t dec_channel_layout;
@@ -2409,19 +2442,22 @@ static int audio_decode_frame(VideoState *is) {
             (af->frame->channel_layout &&
              af->frame->channels == av_get_channel_layout_nb_channels(af->frame->channel_layout)) ?
             af->frame->channel_layout : av_get_default_channel_layout(af->frame->channels);
+    //该方法返回进行同步后，需要播放的样本数量
     wanted_nb_samples = synchronize_audio(is, af->frame->nb_samples);
-
+    //这个if是根据各自种条件判断需不需要重采样
     if (af->frame->format != is->audio_src.fmt ||
         dec_channel_layout != is->audio_src.channel_layout ||
         af->frame->sample_rate != is->audio_src.freq ||
         (wanted_nb_samples != af->frame->nb_samples && !is->swr_ctx)) {
         swr_free(&is->swr_ctx);
+        //重采样上下文设置
         is->swr_ctx = swr_alloc_set_opts(NULL,
                                          is->audio_tgt.channel_layout, is->audio_tgt.fmt,
                                          is->audio_tgt.freq,
                                          dec_channel_layout, af->frame->format,
                                          af->frame->sample_rate,
                                          0, NULL);
+        //判断swrctx是否初始化成功
         if (!is->swr_ctx || swr_init(is->swr_ctx) < 0) {
             av_log(NULL, AV_LOG_ERROR,
                    "Cannot create sample rate converter for conversion of %d Hz %s %d channels to %d Hz %s %d channels!\n",
@@ -2451,6 +2487,7 @@ static int audio_decode_frame(VideoState *is) {
             return -1;
         }
         if (wanted_nb_samples != af->frame->nb_samples) {
+            //设置转换补偿？？？
             if (swr_set_compensation(is->swr_ctx, (wanted_nb_samples - af->frame->nb_samples) *
                                                   is->audio_tgt.freq / af->frame->sample_rate,
                                      wanted_nb_samples * is->audio_tgt.freq /
@@ -2459,9 +2496,11 @@ static int audio_decode_frame(VideoState *is) {
                 return -1;
             }
         }
+        //重新分配内存
         av_fast_malloc(&is->audio_buf1, &is->audio_buf1_size, out_size);
         if (!is->audio_buf1)
             return AVERROR(ENOMEM);
+        //重采样
         len2 = swr_convert(is->swr_ctx, out, out_count, in, af->frame->nb_samples);
         if (len2 < 0) {
             av_log(NULL, AV_LOG_ERROR, "swr_convert() failed\n");
@@ -2473,6 +2512,7 @@ static int audio_decode_frame(VideoState *is) {
                 swr_free(&is->swr_ctx);
         }
         is->audio_buf = is->audio_buf1;
+        //数据大小
         resampled_data_size =
                 len2 * is->audio_tgt.channels * av_get_bytes_per_sample(is->audio_tgt.fmt);
     } else {
@@ -2483,6 +2523,7 @@ static int audio_decode_frame(VideoState *is) {
     audio_clock0 = is->audio_clock;
     /* update the audio clock with the pts */
     if (!isnan(af->pts))
+        //重新设置音频时钟
         is->audio_clock = af->pts + (double) af->frame->nb_samples / af->frame->sample_rate;
     else
         is->audio_clock = NAN;
@@ -2496,6 +2537,7 @@ static int audio_decode_frame(VideoState *is) {
         last_clock = is->audio_clock;
     }
 #endif
+    //返回需要播放的数据大小
     return resampled_data_size;
 }
 
@@ -2517,6 +2559,7 @@ static void sdl_audio_callback(void *opaque, Uint8 *stream, int len) {
                                      is->audio_tgt.frame_size;
             } else {
                 if (is->show_mode != SHOW_MODE_VIDEO)
+                    //这个方法将数据从audio_buf复制到sample_array中了
                     update_sample_display(is, (int16_t *) is->audio_buf, audio_size);
                 is->audio_buf_size = audio_size;
             }
@@ -2694,7 +2737,7 @@ static int stream_component_open(VideoState *is, int stream_index) {
         av_log(avctx, AV_LOG_WARNING,
                "The maximum value for lowres supported by the decoder is %d\n",
                codec->max_lowres);
-        //解码器支持的崔迪分辨率
+        //解码器支持的最低分辨率
         stream_lowres = codec->max_lowres;
     }
     avctx->lowres = stream_lowres;

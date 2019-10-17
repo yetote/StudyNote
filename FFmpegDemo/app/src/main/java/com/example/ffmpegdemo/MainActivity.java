@@ -5,6 +5,7 @@ import android.os.Environment;
 import android.util.Log;
 
 import androidx.appcompat.app.AppCompatActivity;
+
 public class MainActivity extends AppCompatActivity {
 
     Player player;
@@ -20,8 +21,8 @@ public class MainActivity extends AppCompatActivity {
         }
 
         String path = getExternalFilesDir(Environment.DIRECTORY_MUSIC).getPath() + "/test.mp3";
-        Log.e(TAG, "onCreate: "+path );
+        Log.e(TAG, "onCreate: " + path);
         player.prepare(path);
-    }
 
+    }
 }
