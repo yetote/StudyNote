@@ -423,13 +423,16 @@ int64_t get_valid_channel_layout(int64_t channel_layout, int channels) {
     else
         return 0;
 }
-
+/*
+ * 该方法主要是通过一个链表去关联PacketQueue和AVPacket
+ * */
 static int packet_queue_put_private(PacketQueue *q, AVPacket *pkt) {
+    //MyAVPacketList是一个简单的链表
     MyAVPacketList *pkt1;
 
     if (q->abort_request)
         return -1;
-
+    //分配下内存
     pkt1 = av_malloc(sizeof(MyAVPacketList));
     if (!pkt1)
         return -1;
@@ -438,7 +441,7 @@ static int packet_queue_put_private(PacketQueue *q, AVPacket *pkt) {
     if (pkt == &flush_pkt)
         q->serial++;
     pkt1->serial = q->serial;
-
+    //循环
     if (!q->last_pkt)
         q->first_pkt = pkt1;
     else
@@ -456,6 +459,7 @@ static int packet_queue_put(PacketQueue *q, AVPacket *pkt) {
     int ret;
 
     SDL_LockMutex(q->mutex);
+
     ret = packet_queue_put_private(q, pkt);
     SDL_UnlockMutex(q->mutex);
 
@@ -531,6 +535,7 @@ static void packet_queue_abort(PacketQueue *q) {
 static void packet_queue_start(PacketQueue *q) {
     SDL_LockMutex(q->mutex);
     q->abort_request = 0;
+    //入队
     packet_queue_put_private(q, &flush_pkt);
     SDL_UnlockMutex(q->mutex);
 }
@@ -576,6 +581,7 @@ static int packet_queue_get(PacketQueue *q, AVPacket *pkt, int block, int *seria
 static void
 decoder_init(Decoder *d, AVCodecContext *avctx, PacketQueue *queue, SDL_cond *empty_queue_cond) {
     memset(d, 0, sizeof(Decoder));
+    //这里看来init只是用来初始化Decoder并不是用来注册解码器的
     d->avctx = avctx;
     d->queue = queue;
     d->empty_queue_cond = empty_queue_cond;
@@ -1451,11 +1457,13 @@ static void init_clock(Clock *c, int *queue_serial) {
     //这个方法失职了clocl，pts，serial（当前时间戳对应的数据包）
     set_clock(c, NAN, -1);
 }
-
+//master为主，slave为从
 static void sync_clock_to_slave(Clock *c, Clock *slave) {
+    //返回c的时钟差值+最后一个更新时间
     double clock = get_clock(c);
     double slave_clock = get_clock(slave);
     if (!isnan(slave_clock) && (isnan(clock) || fabs(clock - slave_clock) > AV_NOSYNC_THRESHOLD))
+        //设置pts，上次更新时间等信息
         set_clock(c, slave_clock, slave->serial);
 }
 /*
@@ -2159,7 +2167,9 @@ static int audio_thread(void *arg) {
 }
 
 static int decoder_start(Decoder *d, int (*fn)(void *), const char *thread_name, void *arg) {
+    //这里进行了AVPacket入队操作
     packet_queue_start(d->queue);
+    //创建了thread_name线程
     d->decoder_tid = SDL_CreateThread(fn, thread_name, arg);
     if (!d->decoder_tid) {
         av_log(NULL, AV_LOG_ERROR, "SDL_CreateThread(): %s\n", SDL_GetError());
@@ -2565,28 +2575,39 @@ static void sdl_audio_callback(void *opaque, Uint8 *stream, int len) {
             }
             is->audio_buf_index = 0;
         }
+        //len1是队列大小-队列索引
         len1 = is->audio_buf_size - is->audio_buf_index;
         if (len1 > len)
             len1 = len;
         if (!is->muted && is->audio_buf && is->audio_volume == SDL_MIX_MAXVOLUME)
+            //把要播放的数据拷贝到stream这个数组中
             memcpy(stream, (uint8_t *) is->audio_buf + is->audio_buf_index, len1);
         else {
             memset(stream, 0, len1);
             if (!is->muted && is->audio_buf)
+                //这段代码是调整数据格式，音频大小并且猜测也会执行复制操作
                 SDL_MixAudioFormat(stream, (uint8_t *) is->audio_buf + is->audio_buf_index,
                                    AUDIO_S16SYS, len1, is->audio_volume);
         }
+        //数据copy完后对索引进行操作
         len -= len1;
         stream += len1;
         is->audio_buf_index += len1;
     }
+    //audio_write_buf_size为未读(已写入)的数据
     is->audio_write_buf_size = is->audio_buf_size - is->audio_buf_index;
     /* Let's assume the audio driver that is used by SDL has two periods. */
     if (!isnan(is->audio_clock)) {
+        /*
+         * 第二个参数为音频时钟-（2*缓冲区大小+已写入的大小）/写入速度
+         * 因为有两个缓冲区分别进行播放，所以未读的数据缓冲区*2+写入的大小
+         * 所以当前的时间戳相对于audio_clock要落后（2*缓冲区大小+已写入的大小）/写入速度
+         * */
         set_clock_at(&is->audclk, is->audio_clock -
                                   (double) (2 * is->audio_hw_buf_size + is->audio_write_buf_size) /
                                   is->audio_tgt.bytes_per_sec, is->audio_clock_serial,
                      audio_callback_time / 1000000.0);
+        //这里执行的这段代码意味着利用外部时钟去同步音频时钟，为什么这么做呢？再看
         sync_clock_to_slave(&is->extclk, &is->audclk);
     }
 }
@@ -2624,15 +2645,21 @@ static int audio_open(void *opaque, int64_t wanted_channel_layout, int wanted_nb
     wanted_spec.samples = FFMAX(SDL_AUDIO_MIN_BUFFER_SIZE,
                                 2 << av_log2(wanted_spec.freq / SDL_AUDIO_MAX_CALLBACKS_PER_SEC));
     //设置了音频回调接口
+    /*
+     * sdl_audio_callback进行了解码，音频同步等操作
+     * */
     wanted_spec.callback = sdl_audio_callback;
     wanted_spec.userdata = opaque;
+    //打来音频设备
     while (!(audio_dev = SDL_OpenAudioDevice(NULL, 0, &wanted_spec, &spec,
                                              SDL_AUDIO_ALLOW_FREQUENCY_CHANGE |
                                              SDL_AUDIO_ALLOW_CHANNELS_CHANGE))) {
         av_log(NULL, AV_LOG_WARNING, "SDL_OpenAudio (%d channels, %d Hz): %s\n",
                wanted_spec.channels, wanted_spec.freq, SDL_GetError());
+        //设置声道数？？？
         wanted_spec.channels = next_nb_channels[FFMIN(7, wanted_spec.channels)];
         if (!wanted_spec.channels) {
+            //采样率
             wanted_spec.freq = next_sample_rates[next_sample_rate_idx--];
             wanted_spec.channels = wanted_nb_channels;
             if (!wanted_spec.freq) {
@@ -2641,6 +2668,7 @@ static int audio_open(void *opaque, int64_t wanted_channel_layout, int wanted_nb
                 return -1;
             }
         }
+        //确定了声道布局
         wanted_channel_layout = av_get_default_channel_layout(wanted_spec.channels);
     }
     if (spec.format != AUDIO_S16SYS) {
@@ -2670,6 +2698,7 @@ static int audio_open(void *opaque, int64_t wanted_channel_layout, int wanted_nb
         av_log(NULL, AV_LOG_ERROR, "av_samples_get_buffer_size failed\n");
         return -1;
     }
+    //这里返回的是音频缓冲区大小，由SDL_AudioSpec计算得出的
     return spec.size;
 }
 
@@ -2793,7 +2822,7 @@ static int stream_component_open(VideoState *is, int stream_index) {
 #endif
 
             /* prepare audio output */
-            //这里执行了audio_open（打开音频输出）工作
+            //这里执行了audio_open（打开音频输出）工作，ret为音频缓冲区大小
             if ((ret = audio_open(is, channel_layout, nb_channels, sample_rate, &is->audio_tgt)) <
                 0)
                 goto fail;
@@ -2812,14 +2841,16 @@ static int stream_component_open(VideoState *is, int stream_index) {
 
             is->audio_stream = stream_index;
             is->audio_st = ic->streams[stream_index];
-
+            //这里注册解码器
             decoder_init(&is->auddec, avctx, &is->audioq, is->continue_read_thread);
             if ((is->ic->iformat->flags &
                  (AVFMT_NOBINSEARCH | AVFMT_NOGENSEARCH | AVFMT_NO_BYTE_SEEK)) &&
                 !is->ic->iformat->read_seek) {
+                //这里设置起始时间与time_base
                 is->auddec.start_pts = is->audio_st->start_time;
                 is->auddec.start_pts_tb = is->audio_st->time_base;
             }
+            //这里启动解码器,并且创建了一个audio_decoder（然而并未找到）线程
             if ((ret = decoder_start(&is->auddec, audio_thread, "audio_decoder", is)) < 0)
                 goto out;
             SDL_PauseAudioDevice(audio_dev, 0);
@@ -2827,7 +2858,7 @@ static int stream_component_open(VideoState *is, int stream_index) {
         case AVMEDIA_TYPE_VIDEO:
             is->video_stream = stream_index;
             is->video_st = ic->streams[stream_index];
-
+            //注册启动解码器
             decoder_init(&is->viddec, avctx, &is->videoq, is->continue_read_thread);
             if ((ret = decoder_start(&is->viddec, video_thread, "video_decoder", is)) < 0)
                 goto out;
@@ -2836,7 +2867,10 @@ static int stream_component_open(VideoState *is, int stream_index) {
         case AVMEDIA_TYPE_SUBTITLE:
             is->subtitle_stream = stream_index;
             is->subtitle_st = ic->streams[stream_index];
-
+            //注册启动解码器
+            /*
+             * 这么看的话这个方法有问题啊，因为只有音频同步，没有视频和外部时钟同步，还得再看看
+             * */
             decoder_init(&is->subdec, avctx, &is->subtitleq, is->continue_read_thread);
             if ((ret = decoder_start(&is->subdec, subtitle_thread, "subtitle_decoder", is)) < 0)
                 goto out;
