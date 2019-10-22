@@ -811,7 +811,7 @@ static void frame_queue_next(FrameQueue *f) {
 static int frame_queue_nb_remaining(FrameQueue *f) {
     /*、
      * 返回队列中剩余的帧数
-     * 在这里看出帧队列在解码完成后并没有选择直接pop吊数据
+     * 在这里看出帧队列在解码完成后并没有选择直接pop掉数据
      * 而是通过其中存储的next指针指向下一个节点
      * 换句话说这是其实是用queue实现的链表
      * 作用是方便循环播放
@@ -1000,10 +1000,12 @@ static void video_image_display(VideoState *is) {
     Frame *vp;
     Frame *sp = NULL;
     SDL_Rect rect;
-
+    //返回当前帧
     vp = frame_queue_peek_last(&is->pictq);
     if (is->subtitle_st) {
+        //frame_queue_nb_remaining判断剩余的帧数
         if (frame_queue_nb_remaining(&is->subpq) > 0) {
+            //不明白，查找定位帧？
             sp = frame_queue_peek(&is->subpq);
 
             if (vp->pts >= sp->pts + ((float) sp->sub.start_display_time / 1000)) {
@@ -1089,7 +1091,7 @@ static void video_image_display(VideoState *is) {
 static inline int compute_mod(int a, int b) {
     return a < 0 ? a % b + b : a % b;
 }
-
+//看不懂，这段代码估计是配置renderer，设置texture的
 static void video_audio_display(VideoState *s) {
     int i, i_start, x, y1, y, ys, delay, n, nb_display_channels;
     int ch, channels, h, h2;
@@ -1360,7 +1362,7 @@ static void set_default_window_size(int width, int height, AVRational sar) {
     default_width = rect.w;
     default_height = rect.h;
 }
-
+//这个方法用于打开窗口
 static int video_open(VideoState *is) {
     int w, h;
 
@@ -1384,10 +1386,12 @@ static int video_open(VideoState *is) {
 }
 
 /* display the current picture, if any */
+//如果有的话就显示一张图片
 static void video_display(VideoState *is) {
     if (!is->width)
+        //这个方法用于打开窗口(设置窗口标题、宽高)
         video_open(is);
-
+    //这里设置opengl（可能）renderer
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
     if (is->audio_st && is->show_mode != SHOW_MODE_VIDEO)
@@ -1505,7 +1509,7 @@ static double get_master_clock(VideoState *is) {
     }
     return val;
 }
-
+//检查外部时钟速度
 static void check_external_clock_speed(VideoState *is) {
     if (is->video_stream >= 0 && is->videoq.nb_packets <= EXTERNAL_CLOCK_MIN_FRAMES ||
         is->audio_stream >= 0 && is->audioq.nb_packets <= EXTERNAL_CLOCK_MIN_FRAMES) {
@@ -1538,7 +1542,10 @@ static void stream_seek(VideoState *is, int64_t pos, int64_t rel, int seek_by_by
 
 /* pause or resume the video */
 static void stream_toggle_pause(VideoState *is) {
+    //暂停或恢复流
     if (is->paused) {
+        //继续播放
+        //帧时间
         is->frame_timer += av_gettime_relative() / 1000000.0 - is->vidclk.last_updated;
         if (is->read_pause_return != AVERROR(ENOSYS)) {
             is->vidclk.paused = 0;
@@ -1546,6 +1553,7 @@ static void stream_toggle_pause(VideoState *is) {
         set_clock(&is->vidclk, get_clock(&is->vidclk), is->vidclk.serial);
     }
     set_clock(&is->extclk, get_clock(&is->extclk), is->extclk.serial);
+    //修改播放状态
     is->paused = is->audclk.paused = is->vidclk.paused = is->extclk.paused = !is->paused;
 }
 
@@ -1569,6 +1577,7 @@ static void update_volume(VideoState *is, int sign, double step) {
 }
 
 static void step_to_next_frame(VideoState *is) {
+    //流暂停的情况下seek会取消暂停，然后执行seek操作
     /* if the stream is paused unpause it, then step */
     if (is->paused)
         stream_toggle_pause(is);
@@ -1623,6 +1632,7 @@ static void update_video_pts(VideoState *is, double pts, int64_t pos, int serial
 }
 
 /* called to display each frame */
+//显示帧
 static void video_refresh(void *opaque, double *remaining_time) {
     VideoState *is = opaque;
     double time;
@@ -3109,6 +3119,7 @@ static int read_thread(void *arg) {
     }
 
     ret = -1;
+    //ffplay封装了寻找、打开解码器方法，通过不同的流去打开不同的解码器
     if (st_index[AVMEDIA_TYPE_VIDEO] >= 0) {
         ret = stream_component_open(is, st_index[AVMEDIA_TYPE_VIDEO]);
     }
@@ -3118,7 +3129,7 @@ static int read_thread(void *arg) {
     if (st_index[AVMEDIA_TYPE_SUBTITLE] >= 0) {
         stream_component_open(is, st_index[AVMEDIA_TYPE_SUBTITLE]);
     }
-
+    //如果没有流的话失败
     if (is->video_stream < 0 && is->audio_stream < 0) {
         av_log(NULL, AV_LOG_FATAL, "Failed to open file '%s' or configure filtergraph\n",
                is->filename);
@@ -3135,8 +3146,10 @@ static int read_thread(void *arg) {
         if (is->paused != is->last_paused) {
             is->last_paused = is->paused;
             if (is->paused)
+                //暂停流(网络流)
                 is->read_pause_return = av_read_pause(ic);
             else
+                //开始播放流
                 av_read_play(ic);
         }
 #if CONFIG_RTSP_DEMUXER || CONFIG_MMSH_PROTOCOL
@@ -3155,12 +3168,13 @@ static int read_thread(void *arg) {
             int64_t seek_max = is->seek_rel < 0 ? seek_target - is->seek_rel - 2 : INT64_MAX;
 // FIXME the +-2 is due to rounding being not done in the correct direction in generation
 //      of the seek_pos/seek_rel variables
-
+            //seek
             ret = avformat_seek_file(is->ic, -1, seek_min, seek_target, seek_max, is->seek_flags);
             if (ret < 0) {
                 av_log(NULL, AV_LOG_ERROR,
                        "%s: error while seeking\n", is->ic->url);
             } else {
+                //seek之后清空下列表
                 if (is->audio_stream >= 0) {
                     packet_queue_flush(&is->audioq);
                     packet_queue_put(&is->audioq, &flush_pkt);
@@ -3173,6 +3187,7 @@ static int read_thread(void *arg) {
                     packet_queue_flush(&is->videoq);
                     packet_queue_put(&is->videoq, &flush_pkt);
                 }
+                //重新设置下时钟
                 if (is->seek_flags & AVSEEK_FLAG_BYTE) {
                     set_clock(&is->extclk, NAN, 0);
                 } else {
@@ -3197,6 +3212,7 @@ static int read_thread(void *arg) {
         }
 
         /* if the queue are full, no need to read more */
+        //如果队列满了，不需要去读取数据了
         if (infinite_buffer < 1 &&
             (is->audioq.size + is->videoq.size + is->subtitleq.size > MAX_QUEUE_SIZE
              || (stream_has_enough_packets(is->audio_st, is->audio_stream, &is->audioq) &&
@@ -3452,8 +3468,11 @@ static void toggle_audio_display(VideoState *is) {
 
 static void refresh_loop_wait_event(VideoState *is, SDL_Event *event) {
     double remaining_time = 0.0;
+    //该方法用于接收待响应的事件
     SDL_PumpEvents();
+    //SDL_PeepEvents用于检测是否有事件，有的话返回该事件
     while (!SDL_PeepEvents(event, 1, SDL_GETEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT)) {
+        //光标显示还是隐藏
         if (!cursor_hidden && av_gettime_relative() - cursor_last_shown > CURSOR_HIDE_DELAY) {
             SDL_ShowCursor(0);
             cursor_hidden = 1;

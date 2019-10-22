@@ -68,4 +68,3 @@ Decode::~Decode() {
     avformat_network_deinit();
     avformat_free_context(pFmtCtx);
 }
-
