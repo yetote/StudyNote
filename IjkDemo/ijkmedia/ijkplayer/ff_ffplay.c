@@ -1290,6 +1290,7 @@ static void update_video_pts(VideoState *is, double pts, int64_t pos, int serial
 
 /* called to display each frame */
 static void video_refresh(FFPlayer *opaque, double *remaining_time) {
+    //在prepare中调用这个方法估计是用于显示第一帧
     FFPlayer *ffp = opaque;
     VideoState *is = ffp->is;
     double time;
@@ -1297,6 +1298,7 @@ static void video_refresh(FFPlayer *opaque, double *remaining_time) {
     Frame *sp, *sp2;
 
     if (!is->paused && get_master_sync_type(is) == AV_SYNC_EXTERNAL_CLOCK && is->realtime)
+        //这个方法用于检查外部时钟的速度
         check_external_clock_speed(is);
 
     if (!ffp->display_disable && is->show_mode != SHOW_MODE_VIDEO && is->audio_st) {

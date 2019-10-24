@@ -116,8 +116,7 @@ static int64_t jni_set_media_data_source(JNIEnv *env, jobject thiz, jobject medi
         if (J4A_ExceptionCheck__catchAll(env) || !global_media_data_source)
             goto fail;
 
-        nativeMediaDataSource = (int64_t)(intptr_t)
-        global_media_data_source;
+        nativeMediaDataSource = (int64_t)(intptr_t)global_media_data_source;
         J4AC_IjkMediaPlayer__mNativeMediaDataSource__set__catchAll(env, thiz,
                                                                    (jlong) nativeMediaDataSource);
     }
@@ -226,11 +225,8 @@ IjkMediaPlayer_setDataSourceCallback(JNIEnv *env, jobject thiz, jobject callback
     JNI_CHECK_GOTO(nativeMediaDataSource, env, "java/lang/IllegalStateException",
                    "mpjni: jni_set_media_data_source: NewGlobalRef", LABEL_RETURN);
 
-    ALOGV("setDataSourceCallback: %"
-    PRId64
-    "\n", nativeMediaDataSource);
-    snprintf(uri, sizeof(uri), "ijkmediadatasource:%"
-    PRId64, nativeMediaDataSource);
+    ALOGV("setDataSourceCallback: %"PRId64"\n", nativeMediaDataSource);
+    snprintf(uri, sizeof(uri), "ijkmediadatasource:%"PRId64, nativeMediaDataSource);
     //这里是设置c层的mp中的路径，修改mp的状态，通知别的线程现在是FFP_MSG_PLAYBACK_STATE_CHANGED状态
     retval = ijkmp_set_data_source(mp, uri);
 

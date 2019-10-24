@@ -242,22 +242,32 @@ inline static int msg_queue_get(MessageQueue *q, AVMessage *msg, int block)
     SDL_LockMutex(q->mutex);
 
     for (;;) {
+        //终止请求时返回-1
         if (q->abort_request) {
             ret = -1;
             break;
         }
-
+        //msg1为队列中的AVMessage链表的第一个节点
         msg1 = q->first_msg;
+        //如果message1存在
         if (msg1) {
+            //队列中的AVMessage链表的头结点指向他的下一个节点
             q->first_msg = msg1->next;
+            //如果下一个节点不存在
             if (!q->first_msg)
+                //尾节点为null
                 q->last_msg = NULL;
+            //队列中的消息数-1
             q->nb_messages--;
+            //赋值
             *msg = *msg1;
+            //释放
             msg1->obj = NULL;
 #ifdef FFP_MERGE
+            //如果用ffmpeg的话，就用ffmpeg api释放
             av_free(msg1);
 #else
+            //否则手动释放
             msg1->next = q->recycle_msg;
             q->recycle_msg = msg1;
 #endif

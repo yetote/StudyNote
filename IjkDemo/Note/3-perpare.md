@@ -51,7 +51,133 @@ static int ijkmp_prepare_async_l(IjkMediaPlayer *mp) {
     return 0;
 }
 ```
-仍然是一堆宏定义，这些宏定义貌似是用来判断状态的，接下来调用ijkmp_change_state_l修改状态为MP_STATE_ASYNC_PREPARING进preparing状态，引用计数+1。msg_queue_start也很简单，就是将FFP_MSG_FLUSH放入队列中。之后通过sdl的SDL_CreateThreadEx为mp中的msg_thread赋值，最后调用ffp_prepare_async_方法
+仍然是一堆宏定义，这些宏定义貌似是用来判断状态的，接下来调用ijkmp_change_state_l修改状态为MP_STATE_ASYNC_PREPARING进preparing状态，引用计数+1。msg_queue_start也很简单，就是将FFP_MSG_FLUSH放入队列中。之后通过sdl的SDL_CreateThreadEx为mp中的msg_thread赋值，这里我们看一下ijkmp_msg_loop这个方法  
+- ijkmp_msg_loop  
+    该方法位于ijkplayer.c中
+```
+static int ijkmp_msg_loop(void *arg) {
+    IjkMediaPlayer *mp = arg;
+    int ret = mp->msg_loop(arg);
+    return ret;
+}
+```
+该方法会调用msg_loop方法
+- msg_loop
+    这是个函数指针，让我们跟踪一下发现他是在IjkMediaPlayer_native_setup函数中传递过去的，而这个函数的原型位于ijkplayer_jni.c中
+    ```
+    static int message_loop(void *arg) {
+        IjkMediaPlayer *mp = (IjkMediaPlayer *) arg;
+        message_loop_n(env, mp);
+        return 0;
+    }
+    ```  
+    去掉无用的代码后  我们发现他调用了message_loop_n方法
+- message_loop_n
+    该方法位于ijkplayer.c中
+    ```
+    static void message_loop_n(JNIEnv *env,IjkMediaPlayer *mp) {
+        jobject weak_thiz = (jobject) ijkmp_get_weak_thiz(mp);
+        while (1) {
+            AVMessage msg;
+            int retval = ijkmp_get_msg(mp, &msg, 1);   
+            switch (msg.what) {
+                case FFP_MSG_FLUSH:
+                    post_event(env, weak_thiz, MEDIA_NOP,0, 0);
+                    break;
+                case FFP_MSG_ERROR:
+                    post_event(env, weak_thiz, MEDIA_ERROR,MEDIA_ERROR_IJK_PLAYER, msg.arg1);
+                    break;
+                case FFP_MSG_PREPARED:
+                    post_event(env, weak_thiz,MEDIA_PREPARED, 0, 0);
+                    break;
+                case FFP_MSG_COMPLETED:
+                    post_event(env, weak_thiz,MEDIA_PLAYBACK_COMPLETE, 0, 0);
+                    break;
+                case FFP_MSG_VIDEO_SIZE_CHANGED:
+                    post_event(env, weak_thiz,MEDIA_SET_VIDEO_SIZE, msg.arg1,msg.arg2);
+                    break;
+                case FFP_MSG_SAR_CHANGED:
+                    post_event(env, weak_thiz,MEDIA_SET_VIDEO_SAR, msg.arg1,msg.arg2);
+                    break;
+                case FFP_MSG_VIDEO_RENDERING_START:
+                    post_event(env, weak_thiz, MEDIA_INFO,MEDIA_INFO_VIDEO_RENDERING_START, 0);
+                    break;
+                case FFP_MSG_AUDIO_RENDERING_START:
+                    post_event(env, weak_thiz, MEDIA_INFO,MEDIA_INFO_AUDIO_RENDERING_START, 0);
+                    break;
+                case FFP_MSG_VIDEO_ROTATION_CHANGED:
+                    post_event(env, weak_thiz, MEDIA_INFO,MEDIA_INFO_VIDEO_ROTATION_CHANGED,msg.arg1);
+                    break;
+                case FFP_MSG_AUDIO_DECODED_START:
+                    post_event(env, weak_thiz, MEDIA_INFO,MEDIA_INFO_AUDIO_DECODED_START, 0);
+                    break;
+                case FFP_MSG_VIDEO_DECODED_START:
+                    post_event(env, weak_thiz, MEDIA_INFO,MEDIA_INFO_VIDEO_DECODED_START, 0);
+                    break;
+                case FFP_MSG_OPEN_INPUT:
+                    post_event(env, weak_thiz, MEDIA_INFO,MEDIA_INFO_OPEN_INPUT, 0);
+                    break;
+                case FFP_MSG_FIND_STREAM_INFO:
+                    post_event(env, weak_thiz, MEDIA_INFO,MEDIA_INFO_FIND_STREAM_INFO, 0);
+                    break;
+                case FFP_MSG_COMPONENT_OPEN:
+                    post_event(env, weak_thiz, MEDIA_INFO,MEDIA_INFO_COMPONENT_OPEN, 0);
+                    break;
+                case FFP_MSG_BUFFERING_START:
+                    post_event(env, weak_thiz, MEDIA_INFO,MEDIA_INFO_BUFFERING_START, msg.arg1);
+                    break;
+                case FFP_MSG_BUFFERING_END:
+                    post_event(env, weak_thiz, MEDIA_INFO,MEDIA_INFO_BUFFERING_END, msg.arg1);
+                    break;
+                case FFP_MSG_BUFFERING_UPDATE:
+                    post_event(env, weak_thiz,MEDIA_BUFFERING_UPDATE, msg.arg1,msg.arg2);
+                    break;
+                case FFP_MSG_BUFFERING_BYTES_UPDATE:
+                    break;
+                case FFP_MSG_BUFFERING_TIME_UPDATE:
+                    break;
+                case FFP_MSG_SEEK_COMPLETE:
+                    post_event(env, weak_thiz,MEDIA_SEEK_COMPLETE, 0, 0);
+                    break;
+                case FFP_MSG_ACCURATE_SEEK_COMPLETE:
+                    post_event(env, weak_thiz, MEDIA_INFO,MEDIA_INFO_MEDIA_ACCURATE_SEEK_COMPLETE,msg.arg1);
+                    break;
+                case FFP_MSG_PLAYBACK_STATE_CHANGED:
+                    break;
+                case FFP_MSG_TIMED_TEXT:
+                    if (msg.obj) {
+                        jstring text = (*env)->NewStringUTF(env, (char *) msg.obj);
+                        post_event2(env, weak_thiz,MEDIA_TIMED_TEXT, 0, 0, text);
+                        J4A_DeleteLocalRef__p(env, &text);
+                    } else {
+                        post_event2(env, weak_thiz,MEDIA_TIMED_TEXT, 0, 0, NULL);
+                    }
+                    break;
+                case FFP_MSG_GET_IMG_STATE:
+                    if (msg.obj) {
+                        jstring file_name = (*env)->NewStringUTF(env, (char *)msg.obj);
+                        post_event2(env, weak_thiz,MEDIA_GET_IMG_STATE, msg.arg1,msg.arg2, file_name);
+                        J4A_DeleteLocalRef__p(env, &file_name);
+                    } else {
+                        post_event2(env, weak_thiz,MEDIA_GET_IMG_STATE, msg.arg1,msg.arg2, NULL);
+                    }
+                    break;
+                case FFP_MSG_VIDEO_SEEK_RENDERING_START:
+                    post_event(env, weak_thiz, MEDIA_INFO,MEDIA_INFO_VIDEO_SEEK_RENDERING_START,msg.arg1);
+                    break;
+                case FFP_MSG_AUDIO_SEEK_RENDERING_START:
+                    post_event(env, weak_thiz, MEDIA_INFO,MEDIA_INFO_AUDIO_SEEK_RENDERING_START,msg.arg1);
+                    break;
+                default:
+                    break;
+            }
+            msg_free_res(&msg);
+        }
+        LABEL_RETURN:;
+    }
+    ```
+代码很长，但是并不复杂  
+最后调用ffp_prepare_async_方法
 - ffp_prepare_async_l
 ```
 int ffp_prepare_async_l(FFPlayer *ffp, const char *file_name) {
