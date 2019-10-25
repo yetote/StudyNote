@@ -640,21 +640,25 @@ void *ijkmp_set_weak_thiz(IjkMediaPlayer *mp, void *weak_thiz) {
 int ijkmp_get_msg(IjkMediaPlayer *mp, AVMessage *msg, int block) {
     assert(mp);
     while (1) {
+        //设定是否等待下一条消息，默认为false
         int continue_wait_next_msg = 0;
+        //这里从MsgQueue中去获取msg
         int retval = msg_queue_get(&mp->ffplayer->msg_queue, msg, block);
+        /*
+         * 可以确定当ijkplayer发送终止请求时或返回-1
+         * 什么时候会发送终止请求呢？
+         *目前可以确定在创建也就是java层调用native_setup方法执行ijlplayer初始化时会调用
+         *剩下的一个方法是msg_queue_abort，该方法在ijkplayer stop时会调用
+         * 所以在ijkplayer的运行周期内，retval都不可能为负数
+         * */
         if (retval <= 0)
             return retval;
 
         switch (msg->what) {
             case FFP_MSG_PREPARED:
-                MPTRACE("ijkmp_get_msg: FFP_MSG_PREPARED\n");
                 pthread_mutex_lock(&mp->mutex);
                 if (mp->mp_state == MP_STATE_ASYNC_PREPARING) {
                     ijkmp_change_state_l(mp, MP_STATE_PREPARED);
-                } else {
-                    // FIXME: 1: onError() ?
-                    av_log(mp->ffplayer, AV_LOG_DEBUG,
-                           "FFP_MSG_PREPARED: expecting mp_state==MP_STATE_ASYNC_PREPARING\n");
                 }
                 if (!mp->ffplayer->start_on_prepared) {
                     ijkmp_change_state_l(mp, MP_STATE_PAUSED);

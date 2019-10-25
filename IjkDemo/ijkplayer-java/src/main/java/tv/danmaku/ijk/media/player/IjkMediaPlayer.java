@@ -1049,6 +1049,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
                     }
                     return;
                 case MEDIA_NOP: // interface test message - ignore
+                    Log.e(TAG, "handleMessage: NOP");
                     break;
 
                 case MEDIA_SET_VIDEO_SAR:
@@ -1090,6 +1091,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
         }
         if (mp.mEventHandler != null) {
             Message m = mp.mEventHandler.obtainMessage(what, arg1, arg2, obj);
+            Log.e(TAG, "postEventFromNative: what=" + what);
             mp.mEventHandler.sendMessage(m);
         }
     }

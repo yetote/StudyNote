@@ -222,7 +222,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
      * may result in an exception.
      * </p>
      */
-        public IjkMediaPlayer() {
+    public IjkMediaPlayer() {
         //无参的构造方法会调用一个有参(loadlib)的构造方法
         this(sLocalLibLoader);
     }
@@ -1049,6 +1049,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
                     }
                     return;
                 case MEDIA_NOP: // interface test message - ignore
+                    android.util.Log.e(TAG, "handleMessage: 获取到NOP what");
                     break;
 
                 case MEDIA_SET_VIDEO_SAR:
@@ -1090,6 +1091,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
         }
         if (mp.mEventHandler != null) {
             Message m = mp.mEventHandler.obtainMessage(what, arg1, arg2, obj);
+            android.util.Log.e(TAG, "postEventFromNative: what=" + what);
             mp.mEventHandler.sendMessage(m);
         }
     }
