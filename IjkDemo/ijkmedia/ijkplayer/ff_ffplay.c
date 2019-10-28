@@ -214,6 +214,7 @@ static int packet_queue_put_nullpacket(PacketQueue *q, int stream_index) {
 
 /* packet queue handling */
 static int packet_queue_init(PacketQueue *q) {
+    //初始化PacketQueue队列
     memset(q, 0, sizeof(PacketQueue));
     q->mutex = SDL_CreateMutex();
     if (!q->mutex) {
@@ -225,6 +226,10 @@ static int packet_queue_init(PacketQueue *q) {
         av_log(NULL, AV_LOG_FATAL, "SDL_CreateCond(): %s\n", SDL_GetError());
         return AVERROR(ENOMEM);
     }
+    /*
+     * 这里是一条中断请求
+     * 至于是否会向MessageQueue中发送对应的消息，现在不得而知
+     * */
     q->abort_request = 1;
     return 0;
 }
@@ -682,8 +687,11 @@ static int frame_queue_init(FrameQueue *f, PacketQueue *pktq, int max_size, int 
         return AVERROR(ENOMEM);
     }
     f->pktq = pktq;
+    //确定frameQueue的大小
     f->max_size = FFMIN(max_size, FRAME_QUEUE_SIZE);
+    //？？
     f->keep_last = !!keep_last;
+    //初始化队列中的AVFrame
     for (i = 0; i < f->max_size; i++)
         if (!(f->queue[i].frame = av_frame_alloc()))
             return AVERROR(ENOMEM);
@@ -1289,8 +1297,8 @@ static void update_video_pts(VideoState *is, double pts, int64_t pos, int serial
 }
 
 /* called to display each frame */
+//在stream_open时该方法不会执行
 static void video_refresh(FFPlayer *opaque, double *remaining_time) {
-    //在prepare中调用这个方法估计是用于显示第一帧
     FFPlayer *ffp = opaque;
     VideoState *is = ffp->is;
     double time;
@@ -3743,7 +3751,7 @@ static VideoState *stream_open(FFPlayer *ffp, const char *filename, AVInputForma
         goto fail;
     if (frame_queue_init(&is->sampq, &is->audioq, SAMPLE_QUEUE_SIZE, 1) < 0)
         goto fail;
-
+    //初始化 Packet
     if (packet_queue_init(&is->videoq) < 0 ||
         packet_queue_init(&is->audioq) < 0 ||
         packet_queue_init(&is->subtitleq) < 0)
@@ -3767,6 +3775,7 @@ static VideoState *stream_open(FFPlayer *ffp, const char *filename, AVInputForma
     init_clock(&is->vidclk, &is->videoq.serial);
     init_clock(&is->audclk, &is->audioq.serial);
     init_clock(&is->extclk, &is->extclk.serial);
+
     is->audio_clock_serial = -1;
     if (ffp->startup_volume < 0)
         av_log(NULL, AV_LOG_WARNING, "-volume=%d < 0, setting to 0\n", ffp->startup_volume);
@@ -3783,7 +3792,7 @@ static VideoState *stream_open(FFPlayer *ffp, const char *filename, AVInputForma
     is->accurate_seek_mutex = SDL_CreateMutex();
     ffp->is = is;
     is->pause_req = !ffp->start_on_prepared;
-    //这里调用了video_refresh_thread
+    //这里调用了video_refresh_thread，这里因为show_mode的缘故，video_refresh方法不会执行
     is->video_refresh_tid = SDL_CreateThreadEx(&is->_video_refresh_tid, video_refresh_thread, ffp,
                                                "ff_vout");
     if (!is->video_refresh_tid) {
@@ -3847,6 +3856,9 @@ static int video_refresh_thread(void *arg) {
         if (remaining_time > 0.0)
             av_usleep((int) (int64_t)(remaining_time * 1000000.0));
         remaining_time = REFRESH_RATE;
+        /*
+         * 在stream_open方法中show_mode为SHOW_MODE_NONE，所以在stream_open时，video_refresh不会执行
+         * */
         if (is->show_mode != SHOW_MODE_NONE && (!is->paused || is->force_refresh))
             video_refresh(ffp, &remaining_time);
     }
@@ -4365,14 +4377,16 @@ int ffp_prepare_async_l(FFPlayer *ffp, const char *file_name) {
         if (!ffp->aout)
             return -1;
     }
-
+//滤镜部分忽略
 #if CONFIG_AVFILTER
     if (ffp->vfilter0) {
         GROW_ARRAY(ffp->vfilters_list, ffp->nb_vfilters);
         ffp->vfilters_list[ffp->nb_vfilters - 1] = ffp->vfilter0;
     }
 #endif
-
+    /*
+     * 执行open_stream方法
+     * */
     VideoState *is = stream_open(ffp, file_name, NULL);
     if (!is) {
         av_log(NULL, AV_LOG_WARNING, "ffp_prepare_async_l: stream_open failed OOM");

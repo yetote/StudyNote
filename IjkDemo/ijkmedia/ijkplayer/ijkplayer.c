@@ -355,6 +355,7 @@ int ijkmp_set_data_source(IjkMediaPlayer *mp, const char *url) {
 
 static int ijkmp_msg_loop(void *arg) {
     IjkMediaPlayer *mp = arg;
+    //执行ijkplayer_jni.c/msg_loop方法
     int ret = mp->msg_loop(arg);
     return ret;
 }
@@ -374,16 +375,25 @@ static int ijkmp_prepare_async_l(IjkMediaPlayer *mp) {
     MPST_RET_IF_EQ(mp->mp_state, MP_STATE_END);
 
     assert(mp->data_source);
-    //修改mp的状态为PREPARING
+    /*
+     * 修改mp.state为PREPARING
+     * 并将FFP_MSG_PLAYBACK_STATE_CHANGED入队
+     * 这个状态对应的处理方法为空，也就表示在目前版本，这是个无效状态
+     * */
     ijkmp_change_state_l(mp, MP_STATE_ASYNC_PREPARING);
-
+    /*
+     *该方法向queue中添加了一条消息
+     * 该状态表示用于测试native和java层的关联
+     * */
     msg_queue_start(&mp->ffplayer->msg_queue);
 
-    // released in msg_loop
+    // 引用计数+1
     ijkmp_inc_ref(mp);
+    /*
+     * 这里创建了一个新的线程
+     * 该线程用于执行ijkmp_msg_loop方法
+     * */
     mp->msg_thread = SDL_CreateThreadEx(&mp->_msg_thread, ijkmp_msg_loop, mp, "ff_msg_loop");
-    // msg_thread is detached inside msg_loop
-    // TODO: 9 release weak_thiz if pthread_create() failed;
 
     int retval = ffp_prepare_async_l(mp->ffplayer, mp->data_source);
     if (retval < 0) {

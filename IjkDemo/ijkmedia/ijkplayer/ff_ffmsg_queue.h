@@ -225,10 +225,16 @@ inline static void msg_queue_start(MessageQueue *q)
 {
     SDL_LockMutex(q->mutex);
     q->abort_request = 0;
-
+    //初始化一条msg
     AVMessage msg;
     msg_init_msg(&msg);
+    /*
+     * msg.what为FFP_MSG_FLUSH
+     * 传递到java层的what为MEDIA_NOP
+     * MEDIA_NOP表示接口测试
+     * */
     msg.what = FFP_MSG_FLUSH;
+    //入队
     msg_queue_put_private(q, &msg);
     SDL_UnlockMutex(q->mutex);
 }
