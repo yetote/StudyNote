@@ -29,7 +29,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void surfaceCreated(SurfaceHolder holder) {
                 createPlayer();
-//                ijkMediaPlayer.setDisplay(holder);
+                ijkMediaPlayer.setDisplay(holder);
 //                ijkMediaPlayer.start();
             }
 

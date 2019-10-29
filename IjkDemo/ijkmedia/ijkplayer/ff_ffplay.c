@@ -285,6 +285,7 @@ static void packet_queue_abort(PacketQueue *q) {
 static void packet_queue_start(PacketQueue *q) {
     SDL_LockMutex(q->mutex);
     q->abort_request = 0;
+    //这个flush_pkt为null
     packet_queue_put_private(q, &flush_pkt);
     SDL_UnlockMutex(q->mutex);
 }
@@ -2013,6 +2014,7 @@ static int audio_thread(void *arg) {
         return AVERROR(ENOMEM);
 
     do {
+        //这个方法英语设置缓存中的时间差
         ffp_audio_statistic_l(ffp);
         if ((got_frame = decoder_decode_frame(ffp, &is->auddec, frame, NULL)) < 0)
             goto the_end;
@@ -2193,6 +2195,8 @@ static int audio_thread(void *arg) {
 }
 
 static int decoder_start(Decoder *d, int (*fn)(void *), void *arg, const char *name) {
+
+    //队列启动
     packet_queue_start(d->queue);
     d->decoder_tid = SDL_CreateThreadEx(&d->_decoder_tid, fn, arg, name);
     if (!d->decoder_tid) {
@@ -2764,7 +2768,7 @@ static void sdl_audio_callback(void *opaque, Uint8 *stream, int len) {
         }
     }
 }
-
+//这个方法用于打开音频输出，设置了音频的一些参数，但是并没有读取数据
 static int audio_open(FFPlayer *opaque, int64_t wanted_channel_layout, int wanted_nb_channels,
                       int wanted_sample_rate, struct AudioParams *audio_hw_params) {
     FFPlayer *ffp = opaque;
@@ -2855,6 +2859,7 @@ static int audio_open(FFPlayer *opaque, int64_t wanted_channel_layout, int wante
 }
 
 /* open a given stream. Return 0 if OK */
+//打开流，emmm很奇怪，ijkplayer在prepare过程中就开始播放了，那start方法该做什么呢
 static int stream_component_open(FFPlayer *ffp, int stream_index) {
     VideoState *is = ffp->is;
     AVFormatContext *ic = is->ic;
@@ -2870,17 +2875,19 @@ static int stream_component_open(FFPlayer *ffp, int stream_index) {
 
     if (stream_index < 0 || stream_index >= ic->nb_streams)
         return -1;
+    //分配AVCodecCtx
     avctx = avcodec_alloc_context3(NULL);
     if (!avctx)
         return AVERROR(ENOMEM);
-
+    //copy编解码器属性
     ret = avcodec_parameters_to_context(avctx, ic->streams[stream_index]->codecpar);
     if (ret < 0)
         goto fail;
+    //设置时间基准
     av_codec_set_pkt_timebase(avctx, ic->streams[stream_index]->time_base);
-
+    //寻找解码器
     codec = avcodec_find_decoder(avctx->codec_id);
-
+    //设置流索引和codec_name
     switch (avctx->codec_type) {
         case AVMEDIA_TYPE_AUDIO   :
             is->last_audio_stream = stream_index;
@@ -2897,6 +2904,7 @@ static int stream_component_open(FFPlayer *ffp, int stream_index) {
         default:
             break;
     }
+    //寻找解码器
     if (forced_codec_name)
         codec = avcodec_find_decoder_by_name(forced_codec_name);
     if (!codec) {
@@ -2928,7 +2936,7 @@ static int stream_component_open(FFPlayer *ffp, int stream_index) {
     if(codec->capabilities & AV_CODEC_CAP_DR1)
         avctx->flags |= CODEC_FLAG_EMU_EDGE;
 #endif
-
+    //这段代码是设置解码器参数并寻找解码器
     opts = filter_codec_opts(ffp->codec_opts, avctx->codec_id, ic, ic->streams[stream_index],
                              codec);
     if (!av_dict_get(opts, "threads", NULL, 0))
@@ -2979,9 +2987,11 @@ static int stream_component_open(FFPlayer *ffp, int stream_index) {
 #endif
 
             /* prepare audio output */
+            //打开音频输出设备，并且设置下音频的参数，逐利并没有进行音频的解码与播放
             if ((ret = audio_open(ffp, channel_layout, nb_channels, sample_rate, &is->audio_tgt)) <
                 0)
                 goto fail;
+            //设置音频的解码器参数
             ffp_set_audio_codec_info(ffp, AVCODEC_MODULE_NAME, avcodec_get_name(avctx->codec_id));
             is->audio_hw_buf_size = ret;
             is->audio_src = is->audio_tgt;
@@ -2997,7 +3007,10 @@ static int stream_component_open(FFPlayer *ffp, int stream_index) {
 
             is->audio_stream = stream_index;
             is->audio_st = ic->streams[stream_index];
-
+            /*
+             * 注册解码器
+             * 两个sdl方法也找不到相关资料
+             * */
             decoder_init(&is->auddec, avctx, &is->audioq, is->continue_read_thread);
             if ((is->ic->iformat->flags &
                  (AVFMT_NOBINSEARCH | AVFMT_NOGENSEARCH | AVFMT_NO_BYTE_SEEK)) &&
@@ -3151,20 +3164,24 @@ static int read_thread(void *arg) {
         goto fail;
     }
 
+    //分配数组
     memset(st_index, -1, sizeof(st_index));
+    //初始化流索引
     is->last_video_stream = is->video_stream = -1;
     is->last_audio_stream = is->audio_stream = -1;
     is->last_subtitle_stream = is->subtitle_stream = -1;
     is->eof = 0;
-
+    //分配AVFormatCtx
     ic = avformat_alloc_context();
     if (!ic) {
         av_log(NULL, AV_LOG_FATAL, "Could not allocate context.\n");
         ret = AVERROR(ENOMEM);
         goto fail;
     }
+    //io终断回调
     ic->interrupt_callback.callback = decode_interrupt_cb;
     ic->interrupt_callback.opaque = is;
+    //设置一些AVDictionary属性
     if (!av_dict_get(ffp->format_opts, "scan_all_pmts", NULL, AV_DICT_MATCH_CASE)) {
         av_dict_set(&ffp->format_opts, "scan_all_pmts", "1", AV_DICT_DONT_OVERWRITE);
         scan_all_pmts_set = 1;
@@ -3180,15 +3197,24 @@ static int read_thread(void *arg) {
         av_dict_set_int(&ic->metadata, "skip-calc-frame-rate", ffp->skip_calc_frame_rate, 0);
         av_dict_set_int(&ffp->format_opts, "skip-calc-frame-rate", ffp->skip_calc_frame_rate, 0);
     }
-
+    /*
+     * 获取封装格式参数及信息
+     * 这么做是为了优化avformat_open_input探测解封装格式的时间
+     * */
     if (ffp->iformat_name)
         is->iformat = av_find_input_format(ffp->iformat_name);
+    //获取AVFormatCtx
     err = avformat_open_input(&ic, is->filename, is->iformat, &ffp->format_opts);
     if (err < 0) {
         print_error(is->filename, err);
         ret = -1;
         goto fail;
     }
+    /*
+     *这条msg在msg_loop中被处理
+     * 对应的java事件暂无
+     * 表示在当前版本该信息无响应
+     * */
     ffp_notify_msg1(ffp, FFP_MSG_OPEN_INPUT);
 
     if (scan_all_pmts_set)
@@ -3205,7 +3231,7 @@ static int read_thread(void *arg) {
 
     if (ffp->genpts)
         ic->flags |= AVFMT_FLAG_GENPTS;
-
+    //这个方法不清楚，目的是把AVFormatCtx注入到每一个AVPacket中
     av_format_inject_global_side_data(ic);
     //
     //AVDictionary **opts;
@@ -3220,6 +3246,7 @@ static int read_thread(void *arg) {
 
         do {
             if (av_stristart(is->filename, "data:", NULL) && orig_nb_streams > 0) {
+                //这个for循环用于检测流信息是否存在
                 for (i = 0; i < orig_nb_streams; i++) {
                     if (!ic->streams[i] || !ic->streams[i]->codecpar ||
                         ic->streams[i]->codecpar->profile == FF_PROFILE_UNKNOWN) {
@@ -3231,8 +3258,13 @@ static int read_thread(void *arg) {
                     break;
                 }
             }
+            //将流信息填充到opts中
             err = avformat_find_stream_info(ic, opts);
         } while (0);
+        /*
+         * 这条消息在msg_loop中处理
+         * 对应的java响应方式为null
+         * */
         ffp_notify_msg1(ffp, FFP_MSG_FIND_STREAM_INFO);
 
         for (i = 0; i < orig_nb_streams; i++)
@@ -3263,6 +3295,7 @@ static int read_thread(void *arg) {
 
 #endif
     /* if seeking requested, we execute it */
+    //seek的逻辑
     if (ffp->start_time != AV_NOPTS_VALUE) {
         int64_t timestamp;
 
@@ -3276,9 +3309,9 @@ static int read_thread(void *arg) {
                    is->filename, (double) timestamp / AV_TIME_BASE);
         }
     }
-
+    //is_realtime用于判断是否为直播流
     is->realtime = is_realtime(ic);
-
+    //这是个打印函数
     av_dump_format(ic, 0, is->filename, 0);
 
     int video_stream_count = 0;
@@ -3293,7 +3326,7 @@ static int read_thread(void *arg) {
                 st_index[type] = i;
 
         // choose first h264
-
+        //选择视频流
         if (type == AVMEDIA_TYPE_VIDEO) {
             enum AVCodecID codec_id = st->codecpar->codec_id;
             video_stream_count++;
@@ -3801,6 +3834,7 @@ static VideoState *stream_open(FFPlayer *ffp, const char *filename, AVInputForma
     }
 
     is->initialized_decoder = 0;
+    //执行read_thread方法
     is->read_tid = SDL_CreateThreadEx(&is->_read_tid, read_thread, ffp, "ff_read");
     if (!is->read_tid) {
         av_log(NULL, AV_LOG_FATAL, "SDL_CreateThread(): %s\n", SDL_GetError());
@@ -4147,14 +4181,14 @@ static int app_func_event(AVApplicationContext *h, int message, void *data, size
     if (!ffp->inject_opaque)
         return 0;
     if (message == AVAPP_EVENT_IO_TRAFFIC && sizeof(AVAppIOTraffic) == size) {
-        AVAppIOTraffic * event = (AVAppIOTraffic * )(intptr_t)
+        AVAppIOTraffic *event = (AVAppIOTraffic * )(intptr_t)
         data;
         if (event->bytes > 0) {
             ffp->stat.byte_count += event->bytes;
             SDL_SpeedSampler2Add(&ffp->stat.tcp_read_sampler, event->bytes);
         }
     } else if (message == AVAPP_EVENT_ASYNC_STATISTIC && sizeof(AVAppAsyncStatistic) == size) {
-        AVAppAsyncStatistic * statistic = (AVAppAsyncStatistic * )(intptr_t)
+        AVAppAsyncStatistic *statistic = (AVAppAsyncStatistic * )(intptr_t)
         data;
         ffp->stat.buf_backwards = statistic->buf_backwards;
         ffp->stat.buf_forwards = statistic->buf_forwards;

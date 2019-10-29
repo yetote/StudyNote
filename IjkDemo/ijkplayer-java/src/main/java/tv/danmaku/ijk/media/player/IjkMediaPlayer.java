@@ -79,7 +79,8 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
     private static final int MEDIA_INFO = 200;
 
     protected static final int MEDIA_SET_VIDEO_SAR = 10001;
-
+    public static final int MEDIA_INFO_OPEN_INPUT = 10005;
+    public static final int MEDIA_INFO_FIND_STREAM_INFO = 10006;
     //----------------------------------------
     // options
     public static final int IJK_LOG_UNKNOWN = 0;
@@ -108,6 +109,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
     public static final int PROP_FLOAT_VIDEO_DECODE_FRAMES_PER_SECOND = 10001;
     public static final int PROP_FLOAT_VIDEO_OUTPUT_FRAMES_PER_SECOND = 10002;
     public static final int FFP_PROP_FLOAT_PLAYBACK_RATE = 10003;
+
     public static final int FFP_PROP_FLOAT_DROP_FRAME_RATE = 10007;
 
     public static final int FFP_PROP_INT64_SELECTED_VIDEO_STREAM = 20001;
@@ -968,6 +970,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
 
     private static class EventHandler extends Handler {
         private final WeakReference<IjkMediaPlayer> mWeakPlayer;
+        static int count = 0;
 
         public EventHandler(IjkMediaPlayer mp, Looper looper) {
             super(looper);
@@ -986,11 +989,13 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
             switch (msg.what) {
                 case MEDIA_PREPARED:
                     player.notifyOnPrepared();
+                    count++;
                     return;
 
                 case MEDIA_PLAYBACK_COMPLETE:
                     player.stayAwake(false);
                     player.notifyOnCompletion();
+                    count++;
                     return;
 
                 case MEDIA_BUFFERING_UPDATE:
@@ -1010,10 +1015,12 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
 
                     // DebugLog.efmt(TAG, "Buffer (%d%%) %d/%d",  percent, bufferPosition, duration);
                     player.notifyOnBufferingUpdate((int) percent);
+                    count++;
                     return;
 
                 case MEDIA_SEEK_COMPLETE:
                     player.notifyOnSeekComplete();
+                    count++;
                     return;
 
                 case MEDIA_SET_VIDEO_SIZE:
@@ -1021,6 +1028,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
                     player.mVideoHeight = msg.arg2;
                     player.notifyOnVideoSizeChanged(player.mVideoWidth, player.mVideoHeight,
                             player.mVideoSarNum, player.mVideoSarDen);
+                    count++;
                     return;
 
                 case MEDIA_ERROR:
@@ -1029,12 +1037,22 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
                         player.notifyOnCompletion();
                     }
                     player.stayAwake(false);
+                    count++;
                     return;
 
                 case MEDIA_INFO:
                     switch (msg.arg1) {
                         case MEDIA_INFO_VIDEO_RENDERING_START:
-                            DebugLog.i(TAG, "Info: MEDIA_INFO_VIDEO_RENDERING_START\n");
+                            count++;
+                            DebugLog.i(TAG, "Info: MEDIA_INFO_VIDEO_RENDERING_START\n"+count);
+                            break;
+                        case MEDIA_INFO_OPEN_INPUT:
+                            count++;
+                            Log.e(TAG, "handleMessage:MEDIA_INFO_OPEN_INPUT "+count);
+                            break;
+                        case MEDIA_INFO_FIND_STREAM_INFO:
+                            count++;
+                            Log.e(TAG, "handleMessage: MEDIA_INFO_FIND_STREAM_INFO"+count);
                             break;
                     }
                     player.notifyOnInfo(msg.arg1, msg.arg2);
@@ -1043,13 +1061,16 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
                 case MEDIA_TIMED_TEXT:
                     if (msg.obj == null) {
                         player.notifyOnTimedText(null);
+
                     } else {
                         IjkTimedText text = new IjkTimedText(new Rect(0, 0, 1, 1), (String) msg.obj);
                         player.notifyOnTimedText(text);
                     }
+                    count++;
                     return;
                 case MEDIA_NOP: // interface test message - ignore
-                    Log.e(TAG, "handleMessage: NOP");
+                    count++;
+                    Log.e(TAG, "handleMessage: NOP"+count);
                     break;
 
                 case MEDIA_SET_VIDEO_SAR:
@@ -1057,9 +1078,11 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
                     player.mVideoSarDen = msg.arg2;
                     player.notifyOnVideoSizeChanged(player.mVideoWidth, player.mVideoHeight,
                             player.mVideoSarNum, player.mVideoSarDen);
+                    count++;
                     break;
 
                 default:
+                    count++;
                     DebugLog.e(TAG, "Unknown message type " + msg.what);
             }
         }
