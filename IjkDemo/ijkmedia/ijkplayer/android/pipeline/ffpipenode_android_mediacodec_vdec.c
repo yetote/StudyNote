@@ -1844,7 +1844,7 @@ IJKFF_Pipenode *ffpipenode_init_decoder_from_android_mediacodec(FFPlayer *ffp, I
 
     if (!ffp || !ffp->is)
         return NULL;
-
+    //分配内存
     IJKFF_Pipenode *node = ffpipenode_alloc(sizeof(IJKFF_Pipenode_Opaque));
     if (!node)
         return node;
@@ -1853,6 +1853,7 @@ IJKFF_Pipenode *ffpipenode_init_decoder_from_android_mediacodec(FFPlayer *ffp, I
     IJKFF_Pipenode_Opaque *opaque = node->opaque;
     JNIEnv                *env    = NULL;
 
+    //传递函数指针
     node->func_destroy  = func_destroy;
     if (ffp->mediacodec_sync) {
         node->func_run_sync = func_run_sync_loop;
@@ -1888,6 +1889,7 @@ IJKFF_Pipenode *ffpipenode_init_decoder_from_android_mediacodec(FFPlayer *ffp, I
 
     ALOGI("%s:use default mediacodec name: %s\n", __func__, ffp->mediacodec_default_name);
     strcpy(opaque->mcc.codec_name, ffp->mediacodec_default_name);
+    //没找到这个方法，看起来是通过解码器名去创建MediaCodec
     opaque->acodec = SDL_AMediaCodecJava_createByCodecName(env, ffp->mediacodec_default_name);
 
     if (!opaque->acodec) {

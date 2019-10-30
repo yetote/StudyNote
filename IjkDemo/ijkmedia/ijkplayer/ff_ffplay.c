@@ -371,7 +371,7 @@ decoder_init(Decoder *d, AVCodecContext *avctx, PacketQueue *queue, SDL_cond *em
 
     d->first_frame_decoded_time = SDL_GetTickHR();
     d->first_frame_decoded = 0;
-
+    //不清楚具体是做什么的，看起来像是重置(简介？？？)
     SDL_ProfilerReset(&d->decode_profiler, -1);
 }
 
@@ -581,6 +581,7 @@ static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSub
 
                 switch (d->avctx->codec_type) {
                     case AVMEDIA_TYPE_VIDEO:
+                        //接受解码后的帧(原始数据) 第一次这个frame是null的，因为没有进行send_packet
                         ret = avcodec_receive_frame(d->avctx, frame);
                         if (ret >= 0) {
                             ffp->stat.vdps = SDL_SpeedSamplerAdd(&ffp->vdps_sampler,
@@ -596,8 +597,10 @@ static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSub
                     case AVMEDIA_TYPE_AUDIO:
                         ret = avcodec_receive_frame(d->avctx, frame);
                         if (ret >= 0) {
+                            //确定时间戳
                             AVRational tb = (AVRational) {1, frame->sample_rate};
                             if (frame->pts != AV_NOPTS_VALUE)
+                                //重新确定音频时间戳
                                 frame->pts = av_rescale_q(frame->pts,
                                                           av_codec_get_pkt_timebase(d->avctx), tb);
                             else if (d->next_pts != AV_NOPTS_VALUE)
@@ -613,6 +616,7 @@ static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSub
                 }
                 if (ret == AVERROR_EOF) {
                     d->finished = d->pkt_serial;
+                    //清空解码器缓存
                     avcodec_flush_buffers(d->avctx);
                     return 0;
                 }
@@ -625,9 +629,11 @@ static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSub
             if (d->queue->nb_packets == 0)
                 SDL_CondSignal(d->empty_queue_cond);
             if (d->packet_pending) {
+                //move语义，用于移动packet
                 av_packet_move_ref(&pkt, &d->pkt);
                 d->packet_pending = 0;
             } else {
+                //简单的来讲就是从queue中去取数据
                 if (packet_queue_get_or_buffering(ffp, d->queue, &pkt, &d->pkt_serial,
                                                   &d->finished) < 0)
                     return -1;
@@ -642,6 +648,7 @@ static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSub
         } else {
             if (d->avctx->codec_type == AVMEDIA_TYPE_SUBTITLE) {
                 int got_frame = 0;
+                //解码字幕
                 ret = avcodec_decode_subtitle2(d->avctx, sub, &got_frame, &pkt);
                 if (ret < 0) {
                     ret = AVERROR(EAGAIN);
@@ -653,6 +660,7 @@ static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSub
                     ret = got_frame ? 0 : (pkt.data ? AVERROR(EAGAIN) : AVERROR_EOF);
                 }
             } else {
+                //这里开始向解码器发送数据包
                 if (avcodec_send_packet(d->avctx, &pkt) == AVERROR(EAGAIN)) {
                     av_log(d->avctx, AV_LOG_ERROR,
                            "Receive_frame and send_packet both returned EAGAIN, which is an API violation.\n");
@@ -2016,6 +2024,7 @@ static int audio_thread(void *arg) {
     do {
         //这个方法英语设置缓存中的时间差
         ffp_audio_statistic_l(ffp);
+        //decoder_decode_frame用于解码数据，解码后的数据放到frame中
         if ((got_frame = decoder_decode_frame(ffp, &is->auddec, frame, NULL)) < 0)
             goto the_end;
 
@@ -3840,12 +3849,22 @@ static VideoState *stream_open(FFPlayer *ffp, const char *filename, AVInputForma
         av_log(NULL, AV_LOG_FATAL, "SDL_CreateThread(): %s\n", SDL_GetError());
         goto fail;
     }
-
+    /*
+     * async_init_decoder|是否异步初始化解码器|bool|
+     * video_disable|是否禁用视频|bool|
+     * video_mime_type|视频MIME_TYPE|string|
+     * mediacodec_default_name|默认的硬解码器名|string|
+     * mediacodec_all_videos|启用所有的视频(硬解)|bool|
+     * mediacodec_avc|是否支持h264|bool|
+     * mediacodec_hevc|是否支持h265|bool|
+     * mediacodec_mpeg2|是否支持mp2|bool|
+     * */
     if (ffp->async_init_decoder && !ffp->video_disable && ffp->video_mime_type &&
         strlen(ffp->video_mime_type) > 0
         && ffp->mediacodec_default_name && strlen(ffp->mediacodec_default_name) > 0) {
         if (ffp->mediacodec_all_videos || ffp->mediacodec_avc || ffp->mediacodec_hevc ||
             ffp->mediacodec_mpeg2) {
+            //初始化解码器
             decoder_init(&is->viddec, NULL, &is->videoq, is->continue_read_thread);
             ffp->node_vdec = ffpipeline_init_video_decoder(ffp->pipeline, ffp);
         }
@@ -4420,6 +4439,9 @@ int ffp_prepare_async_l(FFPlayer *ffp, const char *file_name) {
 #endif
     /*
      * 执行open_stream方法
+     * 初始化了FrameQueue、PacketQueue
+     * 执行了read_thread方法
+     * 初始化了软硬解码器
      * */
     VideoState *is = stream_open(ffp, file_name, NULL);
     if (!is) {
