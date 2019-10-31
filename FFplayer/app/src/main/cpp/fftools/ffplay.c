@@ -3007,7 +3007,7 @@ static int read_thread(void *arg) {
         err = avformat_find_stream_info(ic, opts);
 
         for (i = 0; i < orig_nb_streams; i++)
-            //释放字典？？没干啥就释放了？
+            //释放字典？？没干啥就释放了？emmm，字典被用于avformat_find_stream_info了
             av_dict_free(&opts[i]);
         av_freep(&opts);
 

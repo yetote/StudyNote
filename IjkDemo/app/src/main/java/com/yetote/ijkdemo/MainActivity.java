@@ -26,7 +26,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        path = getExternalFilesDir(Environment.DIRECTORY_MOVIES).getPath() + "/test.mp4";
+        path = getExternalFilesDir(Environment.DIRECTORY_MOVIES).getPath() + "/test.mp3";
         surfaceView = findViewById(R.id.surfaceView);
         surfaceView.getHolder().addCallback(new SurfaceHolder.Callback() {
             @Override
