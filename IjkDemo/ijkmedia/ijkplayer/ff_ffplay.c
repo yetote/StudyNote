@@ -2022,7 +2022,7 @@ static int audio_thread(void *arg) {
         return AVERROR(ENOMEM);
 
     do {
-        //这个方法英语设置缓存中的时间差
+        //这个方法用于设置缓存中的时间差
         ffp_audio_statistic_l(ffp);
         //decoder_decode_frame用于解码数据，解码后的数据放到frame中
         if ((got_frame = decoder_decode_frame(ffp, &is->auddec, frame, NULL)) < 0)
@@ -2030,6 +2030,9 @@ static int audio_thread(void *arg) {
 
         if (got_frame) {
             tb = (AVRational) {1, frame->sample_rate};
+            /*
+             * enable_accurate_seek全文搜索后发现始终为false
+             * */
             if (ffp->enable_accurate_seek && is->audio_accurate_seek_req && !is->seek_req) {
                 frame_pts = (frame->pts == AV_NOPTS_VALUE) ? NAN : frame->pts * av_q2d(tb);
                 now = av_gettime_relative() / 1000;
@@ -2928,6 +2931,7 @@ static int stream_component_open(FFPlayer *ffp, int stream_index) {
     }
 
     avctx->codec_id = codec->id;
+    //不清楚stream_lowres具体是什么
     if (stream_lowres > av_codec_get_max_lowres(codec)) {
         av_log(avctx, AV_LOG_WARNING,
                "The maximum value for lowres supported by the decoder is %d\n",
@@ -2990,6 +2994,7 @@ static int stream_component_open(FFPlayer *ffp, int stream_index) {
                 channel_layout = av_buffersink_get_channel_layout(sink);
             }
 #else
+            //设置采样率，声道数、声道布局
             sample_rate = avctx->sample_rate;
             nb_channels = avctx->channels;
             channel_layout = avctx->channel_layout;
@@ -3000,8 +3005,9 @@ static int stream_component_open(FFPlayer *ffp, int stream_index) {
             if ((ret = audio_open(ffp, channel_layout, nb_channels, sample_rate, &is->audio_tgt)) <
                 0)
                 goto fail;
-            //设置音频的解码器参数
+            //设置了下audio_codec_info，值为编码格式
             ffp_set_audio_codec_info(ffp, AVCODEC_MODULE_NAME, avcodec_get_name(avctx->codec_id));
+            //设置音频的解码器参数
             is->audio_hw_buf_size = ret;
             is->audio_src = is->audio_tgt;
             is->audio_buf_size = 0;
@@ -3027,6 +3033,7 @@ static int stream_component_open(FFPlayer *ffp, int stream_index) {
                 is->auddec.start_pts = is->audio_st->start_time;
                 is->auddec.start_pts_tb = is->audio_st->time_base;
             }
+            //decoder_start中第二个方法为线程方法
             if ((ret = decoder_start(&is->auddec, audio_thread, ffp, "ff_audio_dec")) < 0)
                 goto out;
             SDL_AoutPauseAudio(ffp->aout, 0);
@@ -3334,7 +3341,10 @@ static int read_thread(void *arg) {
                 st_index[type] = i;
 
         // choose first h264
-        //选择视频流
+        /*
+         * 这一段看起来是确定了h264的索引，也就是h264可以省略掉寻找视频流的过程，
+         * 然而下面的代码仍然进行了寻找视频流这一步，也不清楚意义何在
+         * */
         if (type == AVMEDIA_TYPE_VIDEO) {
             enum AVCodecID codec_id = st->codecpar->codec_id;
             video_stream_count++;
@@ -3345,6 +3355,7 @@ static int read_thread(void *arg) {
             }
         }
     }
+    //找流
     if (video_stream_count > 1 && st_index[AVMEDIA_TYPE_VIDEO] < 0) {
         st_index[AVMEDIA_TYPE_VIDEO] = first_h264_stream;
         av_log(NULL, AV_LOG_WARNING, "multiple video stream found, prefer first h264 stream: %d\n",
@@ -3381,9 +3392,12 @@ static int read_thread(void *arg) {
 #endif
 
     /* open the streams */
+    //打开流
     if (st_index[AVMEDIA_TYPE_AUDIO] >= 0) {
+        //打开指定的流
         stream_component_open(ffp, st_index[AVMEDIA_TYPE_AUDIO]);
     } else {
+        //如果音频流不存在，则同步方式以视频为主
         ffp->av_sync_type = AV_SYNC_VIDEO_MASTER;
         is->av_sync_type = ffp->av_sync_type;
     }
@@ -3398,6 +3412,7 @@ static int read_thread(void *arg) {
     if (st_index[AVMEDIA_TYPE_SUBTITLE] >= 0) {
         stream_component_open(ffp, st_index[AVMEDIA_TYPE_SUBTITLE]);
     }
+    //该函数在ijkplayer_jni中处理，对应的java事件为null
     ffp_notify_msg1(ffp, FFP_MSG_COMPONENT_OPEN);
 
     if (!ffp->ijkmeta_delay_init) {

@@ -164,16 +164,15 @@ static int decode_interrupt_cb(void *ctx) {
         //寻找视频流索引
         st_index[AVMEDIA_TYPE_VIDEO] =av_find_best_stream(ic, AVMEDIA_TYPE_VIDEO,st_index[AVMEDIA_TYPE_VIDEO], -1, NULL, 0);
     if (!audio_disable)
-        //这是意味着有有音频流就必须有视频流
         st_index[AVMEDIA_TYPE_AUDIO] =av_find_best_stream(ic, AVMEDIA_TYPE_AUDIO,st_index[AVMEDIA_TYPE_AUDIO],st_index[AVMEDIA_TYPE_VIDEO],NULL, 0);
     if (!video_disable && !subtitle_disable)
-        //这里确定了字幕流必须与音频流或视频流相关
+
         st_index[AVMEDIA_TYPE_SUBTITLE] =
                 av_find_best_stream(ic, AVMEDIA_TYPE_SUBTITLE,st_index[AVMEDIA_TYPE_SUBTITLE],(st_index[AVMEDIA_TYPE_AUDIO] >= 0 ?st_index[AVMEDIA_TYPE_AUDIO] :st_index[AVMEDIA_TYPE_VIDEO]),NULL, 0);
 
     is->show_mode = show_mode;
 ```
-代码看起来很长，但是仔细分析一下，发现重复的代码较多。第一步，对各个流的索引进行了初始化，接下来在字典中添加scan_all_pmts，接下就开始寻找流信息了，剩下的就是确定各个流的索引了。因为ffplay以视频为主，所以音频在这里不是必须的。这一环节结束后st_index数组中就存储了流索引了。
+代码看起来很长，但是仔细分析一下，发现重复的代码较多。第一步，对各个流的索引进行了初始化，接下来在字典中添加scan_all_pmts，接下就开始寻找流信息了，剩下的就是确定各个流的索引了。这一环节结束后st_index数组中就存储了流索引了。
 ##### ijkplayer
 ```
     //分配数组
@@ -252,11 +251,16 @@ static int decode_interrupt_cb(void *ctx) {
             }
         }
     }
+    /*
+     * 这一段看起来是确定了h264的索引，也就是h264可以省略掉寻找视频流的过程，
+     * 然而下面的代码仍然进行了寻找视频流这一步，也不清楚意义何在
+     * */
     if (video_stream_count > 1 && st_index[AVMEDIA_TYPE_VIDEO] < 0) {
         st_index[AVMEDIA_TYPE_VIDEO] = first_h264_stream;
         av_log(NULL, AV_LOG_WARNING, "multiple video stream found, prefer first h264 stream: %d\n",
                first_h264_stream);
     }
+    //找流
     if (!ffp->video_disable)
         st_index[AVMEDIA_TYPE_VIDEO] =
                 av_find_best_stream(ic, AVMEDIA_TYPE_VIDEO,
@@ -278,5 +282,284 @@ static int decode_interrupt_cb(void *ctx) {
 
     is->show_mode = ffp->show_mode;
 ```
+这段代码只是寻找了流索引，找到了之后自然是打开了
+#### 打开流
+##### 
+##### ijkplayer
+```
+ //打开流
+if (st_index[AVMEDIA_TYPE_AUDIO] >= 0) {
+    //打开指定的流
+    stream_component_open(ffp, st_index[AVMEDIA_TYPE_AUDIO]);
+} else {
+    //如果音频流不存在，则同步方式以视频为主
+    ffp->av_sync_type = AV_SYNC_VIDEO_MASTER;
+    is->av_sync_type = ffp->av_sync_type;
+}
+ret = -1;
+if (st_index[AVMEDIA_TYPE_VIDEO] >= 0) {
+    ret = stream_component_open(ffp, st_index[AVMEDIA_TYPE_VIDEO]);
+}
+if (is->show_mode == SHOW_MODE_NONE)
+    is->show_mode = ret >= 0 ? SHOW_MODE_VIDEO : SHOW_MODE_RDFT;
+if (st_index[AVMEDIA_TYPE_SUBTITLE] >= 0) {
+    stream_component_open(ffp, st_index[AVMEDIA_TYPE_SUBTITLE]);
+}
+//该函数在ijkplayer_jni中处理，对应的java事件为null
+ffp_notify_msg1(ffp, FFP_MSG_COMPONENT_OPEN);
+```
+这段代码用于打开流，需要注意地方为ijkplayer在找不到音频是，同步方式变为视频为主。stream_component_open则是打开流的具体方法，参数为ffplay实例和对应的流索引
+- stream_component_open
+```
+static int stream_component_open(FFPlayer *ffp, int stream_index) {
+    ...
+    //分配AVCodecCtx
+    avctx = avcodec_alloc_context3(NULL);
+    //copy编解码器属性
+    ret = avcodec_parameters_to_context(avctx, ic->streams[stream_index]->codecpar);
+    //设置时间基准
+    av_codec_set_pkt_timebase(avctx, ic->streams[stream_index]->time_base);
+    //寻找解码器
+    codec = avcodec_find_decoder(avctx->codec_id);
+    //设置流索引和codec_name
+    switch (avctx->codec_type) {
+        case AVMEDIA_TYPE_AUDIO   :
+            is->last_audio_stream = stream_index;
+            forced_codec_name = ffp->audio_codec_name;
+            break;
+        case AVMEDIA_TYPE_SUBTITLE:
+            is->last_subtitle_stream = stream_index;
+            forced_codec_name = ffp->subtitle_codec_name;
+            break;
+        case AVMEDIA_TYPE_VIDEO   :
+            is->last_video_stream = stream_index;
+            forced_codec_name = ffp->video_codec_name;
+            break;
+        default:
+            break;
+    }
+    //寻找解码器
+    if (forced_codec_name)
+        codec = avcodec_find_decoder_by_name(forced_codec_name);
+    avctx->codec_id = codec->id;
+    //不清楚stream_lowres具体是什么
+    if (stream_lowres > av_codec_get_max_lowres(codec)) {
+        stream_lowres = av_codec_get_max_lowres(codec);
+    }
+    av_codec_set_lowres(avctx, stream_lowres);
+    if (ffp->fast)
+        avctx->flags2 |= AV_CODEC_FLAG2_FAST;
+    //这段代码是设置解码器参数并寻找解码器
+    opts = filter_codec_opts(ffp->codec_opts, avctx->codec_id, ic, ic->streams[stream_index],
+                             codec);
+    if (!av_dict_get(opts, "threads", NULL, 0))
+        av_dict_set(&opts, "threads", "auto", 0);
+    if (stream_lowres)
+        av_dict_set_int(&opts, "lowres", stream_lowres, 0);
+    if (avctx->codec_type == AVMEDIA_TYPE_VIDEO || avctx->codec_type == AVMEDIA_TYPE_AUDIO)
+        av_dict_set(&opts, "refcounted_frames", "1", 0);
+    //打开解码器
+    if ((ret = avcodec_open2(avctx, codec, &opts)) < 0) {
+        goto fail;
+    }
+    if ((t = av_dict_get(opts, "", NULL, AV_DICT_IGNORE_SUFFIX))) {
+        av_log(NULL, AV_LOG_ERROR, "Option %s not found.\n", t->key);
+    }
+    is->eof = 0;
+    ic->streams[stream_index]->discard = AVDISCARD_DEFAULT;
+    ...
+}
+```
+这段代码主要是对解码器进行操作，接下来看下stream_component_open中不同流的不同操作
+- 音频
+```
+switch (avctx->codec_type) {
+    case AVMEDIA_TYPE_AUDIO:
+        //设置采样率，声道数、声道布局
+        sample_rate = avctx->sample_rate;
+        nb_channels = avctx->channels;
+        channel_layout = avctx->channel_layout;
+        /* prepare audio output */
+        //打开音频输出设备，并且设置下音频的参数，逐利并没有进行音频的解码与播放
+        if ((ret = audio_open(ffp, channel_layout, nb_channels, sample_rate, &is->audio_tgt)) <0)
+            goto fail;
+        //设置音频的解码器参数
+        ffp_set_audio_codec_info(ffp, AVCODEC_MODULE_NAME, avcodec_get_name(avctx->codec_id));
+        is->audio_hw_buf_size = ret;
+        is->audio_src = is->audio_tgt;
+        is->audio_buf_size = 0;
+        is->audio_buf_index = 0;
+        /* init averaging filter */
+        is->audio_diff_avg_coef = exp(log(0.01) / AUDIO_DIFF_AVG_NB);
+        is->audio_diff_avg_count = 0;
+        /* since we do not have a precise anough audio FIFO fullness,
+           we correct audio sync only if larger than this threshold */
+        is->audio_diff_threshold = 2.0 * is->audio_hw_buf_size / is->audio_tgt.bytes_per_sec;
+        is->audio_stream = stream_index;
+        is->audio_st = ic->streams[stream_index];
+        /*
+         * 注册解码器
+         * 两个sdl方法也找不到相关资料
+         * */
+        decoder_init(&is->auddec, avctx, &is->audioq, is->continue_read_thread);
+        if ((is->ic->iformat->flags &(AVFMT_NOBINSEARCH | AVFMT_NOGENSEARCH | AVFMT_NO_BYTE_SEEK)) &&!is->ic->iformat->read_seek) {
+            is->auddec.start_pts = is->audio_st->start_time;
+            is->auddec.start_pts_tb = is->audio_st->time_base;
+        }
+        //decoder_start中第二个方法为线程方法
+        if ((ret = decoder_start(&is->auddec, audio_thread, ffp, "ff_audio_dec")) < 0)
+            goto out;
+        SDL_AoutPauseAudio(ffp->aout, 0);
+        break;
+```
+这段代码包括了audio_open、ffp_set_audio_codec_info、decoder_init、decoder_start这四个方法，去除掉第一个音频输出方法,第二个方法用于设置编码格式外，剩下的两个个方法都与解码器有关，我们进入看一下
+```
+static void decoder_init(Decoder *d, AVCodecContext *avctx, PacketQueue *queue, SDL_cond *empty_queue_cond) {
+    memset(d, 0, sizeof(Decoder));
+    d->avctx = avctx;
+    d->queue = queue;
+    d->empty_queue_cond = empty_queue_cond;
+    d->start_pts = AV_NOPTS_VALUE;
 
+    d->first_frame_decoded_time = SDL_GetTickHR();
+    d->first_frame_decoded = 0;
+    //不清楚具体是做什么的，看起来像是重置(简介？？？)
+    SDL_ProfilerReset(&d->decode_profiler, -1);
+}
+```
+很简单，不详细解释了，来看下decoder_start方法
+```
+static int decoder_start(Decoder *d, int (*fn)(void *), void *arg, const char *name) {
 
+    //队列启动
+    packet_queue_start(d->queue);
+    d->decoder_tid = SDL_CreateThreadEx(&d->_decoder_tid, fn, arg, name);
+    return 0;
+}
+```
+启动队列(AudioPacketQueue)，执行线程方法(audio_thread)。
+```
+static int audio_thread(void *arg) {
+    AVFrame *frame = av_frame_alloc();
+    do {
+        //这个方法用于设置缓存中的时间差
+        ffp_audio_statistic_l(ffp);
+        //decoder_decode_frame用于解码数据，解码后的数据放到frame中
+        if ((got_frame = decoder_decode_frame(ffp, &is->auddec, frame, NULL)) < 0)
+            goto the_end;
+
+        if (got_frame) {
+            if (!(af = frame_queue_peek_writable(&is->sampq)))
+                goto the_end;
+
+            af->pts = (frame->pts == AV_NOPTS_VALUE) ? NAN : frame->pts * av_q2d(tb);
+            af->pos = frame->pkt_pos;
+            af->serial = is->auddec.pkt_serial;
+            af->duration = av_q2d((AVRational) {frame->nb_samples, frame->sample_rate});
+
+            av_frame_move_ref(af->frame, frame);
+            frame_queue_push(&is->sampq);
+        }
+    } while (ret >= 0 || ret == AVERROR(EAGAIN) || ret == AVERROR_EOF);
+}
+```
+去掉seek代码后就变得很简洁了。seek操作的话后面在说吧。这段代码中包括了audio_accurate_seek_fail、frame_queue_peek_writable、av_frame_move_ref、frame_queue_push这四个方法。
+```
+static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSubtitle *sub) {
+    for (;;) {
+        AVPacket pkt;
+        if (d->queue->serial == d->pkt_serial) {
+            do {
+                if (d->queue->abort_request)
+                    return -1;
+                switch (d->avctx->codec_type) {
+                    case AVMEDIA_TYPE_VIDEO:
+                        //接受解码后的帧(原始数据) 第一次这个frame是null的，因为没有进行send_packet
+                        ret = avcodec_receive_frame(d->avctx, frame);
+                        if (ret >= 0) {
+                            ffp->stat.vdps = SDL_SpeedSamplerAdd(&ffp->vdps_sampler,
+                                                                 FFP_SHOW_VDPS_AVCODEC,
+                                                                 "vdps[avcodec]");
+                            if (ffp->decoder_reorder_pts == -1) {
+                                frame->pts = frame->best_effort_timestamp;
+                            } else if (!ffp->decoder_reorder_pts) {
+                                frame->pts = frame->pkt_dts;
+                            }
+                        }
+                        break;
+                    case AVMEDIA_TYPE_AUDIO:
+                        ret = avcodec_receive_frame(d->avctx, frame);
+                        if (ret >= 0) {
+                            //确定时间戳
+                            AVRational tb = (AVRational) {1, frame->sample_rate};
+                            if (frame->pts != AV_NOPTS_VALUE)
+                                //重新确定音频时间戳
+                                frame->pts = av_rescale_q(frame->pts,
+                                                          av_codec_get_pkt_timebase(d->avctx), tb);
+                            else if (d->next_pts != AV_NOPTS_VALUE)
+                                frame->pts = av_rescale_q(d->next_pts, d->next_pts_tb, tb);
+                            if (frame->pts != AV_NOPTS_VALUE) {
+                                d->next_pts = frame->pts + frame->nb_samples;
+                                d->next_pts_tb = tb;
+                            }
+                        }
+                        break;
+                    default:
+                        break;
+                }
+                if (ret == AVERROR_EOF) {
+                    d->finished = d->pkt_serial;
+                    //清空解码器缓存
+                    avcodec_flush_buffers(d->avctx);
+                    return 0;
+                }
+                if (ret >= 0)
+                    return 1;
+            } while (ret != AVERROR(EAGAIN));
+        }
+
+        do {
+            if (d->queue->nb_packets == 0)
+                SDL_CondSignal(d->empty_queue_cond);
+            if (d->packet_pending) {
+                //move语义，用于移动packet
+                av_packet_move_ref(&pkt, &d->pkt);
+                d->packet_pending = 0;
+            } else {
+                //简单的来讲就是从queue中去取数据
+                if (packet_queue_get_or_buffering(ffp, d->queue, &pkt, &d->pkt_serial, &d->finished) < 0)
+                    return -1;
+            }
+        } while (d->queue->serial != d->pkt_serial);
+
+        if (pkt.data == flush_pkt.data) {
+            avcodec_flush_buffers(d->avctx);
+            d->finished = 0;
+            d->next_pts = d->start_pts;
+            d->next_pts_tb = d->start_pts_tb;
+        } else {
+            if (d->avctx->codec_type == AVMEDIA_TYPE_SUBTITLE) {
+                int got_frame = 0;
+                //解码字幕
+                ret = avcodec_decode_subtitle2(d->avctx, sub, &got_frame, &pkt);
+                if (ret < 0) {
+                    ret = AVERROR(EAGAIN);
+                } else {
+                    if (got_frame && !pkt.data) {
+                        d->packet_pending = 1;
+                        av_packet_move_ref(&d->pkt, &pkt);
+                    }
+                    ret = got_frame ? 0 : (pkt.data ? AVERROR(EAGAIN) : AVERROR_EOF);
+                }
+            } else {
+                //这里开始向解码器发送数据包
+                if (avcodec_send_packet(d->avctx, &pkt) == AVERROR(EAGAIN)) {
+                    d->packet_pending = 1;
+                    av_packet_move_ref(&d->pkt, &pkt);
+                }
+            }
+            av_packet_unref(&pkt);
+        }
+    }
+}
+```
