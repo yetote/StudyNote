@@ -70,6 +70,7 @@ IJKFF_Pipenode *ffpipeline_init_video_decoder(IJKFF_Pipeline *pipeline, FFPlayer
 }
 
 int ffpipeline_config_video_decoder(IJKFF_Pipeline *pipeline, FFPlayer *ffp) {
+    //配置视频解码器(硬解)，该方法定义在ijkmedia/ijkplayer/android/pipeline_android.c中
     return pipeline->func_config_video_decoder(pipeline, ffp);
 }
 

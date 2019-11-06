@@ -633,13 +633,16 @@ static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSub
                 av_packet_move_ref(&pkt, &d->pkt);
                 d->packet_pending = 0;
             } else {
-                //简单的来讲就是从queue中去取数据
+                //简单的来讲就是从queue中去取数据(AVPacket)
                 if (packet_queue_get_or_buffering(ffp, d->queue, &pkt, &d->pkt_serial,
                                                   &d->finished) < 0)
                     return -1;
             }
         } while (d->queue->serial != d->pkt_serial);
-
+        /*
+         * flush_pkt在packetQueue启动，执行seek操作时会放入到队列中，这是一个空的packet
+         * 当取到flush_packet时就证明流在此处断开，需要刷新解码器的缓存
+         * */
         if (pkt.data == flush_pkt.data) {
             avcodec_flush_buffers(d->avctx);
             d->finished = 0;
@@ -736,7 +739,7 @@ static Frame *frame_queue_peek_next(FrameQueue *f) {
 static Frame *frame_queue_peek_last(FrameQueue *f) {
     return &f->queue[f->rindex];
 }
-
+//获取frameQueue中可用的节点
 static Frame *frame_queue_peek_writable(FrameQueue *f) {
     /* wait until we have space to put a new frame */
     SDL_LockMutex(f->mutex);
@@ -2178,6 +2181,7 @@ static int audio_thread(void *arg) {
         while ((ret = av_buffersink_get_frame_flags(is->out_audio_filter, frame, 0)) >= 0) {
             tb = av_buffersink_get_time_base(is->out_audio_filter);
 #endif
+
             if (!(af = frame_queue_peek_writable(&is->sampq)))
                 goto the_end;
 
@@ -2780,6 +2784,7 @@ static void sdl_audio_callback(void *opaque, Uint8 *stream, int len) {
         }
     }
 }
+
 //这个方法用于打开音频输出，设置了音频的一些参数，但是并没有读取数据
 static int audio_open(FFPlayer *opaque, int64_t wanted_channel_layout, int wanted_nb_channels,
                       int wanted_sample_rate, struct AudioParams *audio_hw_params) {
@@ -3158,7 +3163,8 @@ static int read_thread(void *arg) {
     FFPlayer *ffp = arg;
     VideoState *is = ffp->is;
     AVFormatContext *ic = NULL;
-    int err, i, ret __unused;
+    int err, i, ret
+    __unused;
     int st_index[AVMEDIA_TYPE_NB];
     AVPacket pkt1, *pkt = &pkt1;
     int64_t stream_start_time;

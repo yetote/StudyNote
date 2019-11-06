@@ -713,7 +713,7 @@ static int feed_input_buffer(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs, 
 
     if (enqueue_count)
         *enqueue_count = 0;
-
+    //是否终止请求
     if (d->queue->abort_request) {
         ret = 0;
         goto fail;
@@ -728,15 +728,19 @@ static int feed_input_buffer(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs, 
         do {
             if (d->queue->nb_packets == 0)
                 SDL_CondSignal(d->empty_queue_cond);
+            //该方法用于从PacketQueue中取AVPacket
             if (ffp_packet_queue_get_or_buffering(ffp, d->queue, &pkt, &d->pkt_serial, &d->finished) < 0) {
                 ret = -1;
                 goto fail;
             }
+            //判断取到的Packet是不是flush_pkt
             if (ffp_is_flush_packet(&pkt) || opaque->acodec_flush_request) {
                 // request flush before lock, or never get mutex
                 opaque->acodec_flush_request = true;
                 SDL_LockMutex(opaque->acodec_mutex);
+                //判断MediaCodec是否已经进入start状态
                 if (SDL_AMediaCodec_isStarted(opaque->acodec)) {
+                    //当有刷新请求并且队列中有Packet数据，则刷新解码器缓存
                     if (opaque->input_packet_count > 0) {
                         // flush empty queue cause error on OMX.SEC.AVC.Decoder (Nexus S)
                         SDL_VoutAndroid_invalidateAllBuffers(opaque->weak_vout);
@@ -754,6 +758,7 @@ static int feed_input_buffer(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs, 
                 d->next_pts_tb = d->start_pts_tb;
             }
         } while (ffp_is_flush_packet(&pkt) || d->queue->serial != d->pkt_serial);
+        //去掉side_data，side_data是容器提供的一些额外数据
         av_packet_split_side_data(&pkt);
         av_packet_unref(&d->pkt);
         d->pkt_temp = d->pkt = pkt;
@@ -1575,7 +1580,7 @@ static int func_run_sync(IJKFF_Pipenode *node)
     AVRational             frame_rate = av_guess_frame_rate(is->ic, is->video_st, NULL);
     double                 duration;
     double                 pts;
-
+    //硬解码器不存在，则使用软解码器
     if (!opaque->acodec) {
         return ffp_video_thread(ffp);
     }
@@ -1588,7 +1593,7 @@ static int func_run_sync(IJKFF_Pipenode *node)
     frame = av_frame_alloc();
     if (!frame)
         goto fail;
-
+    //这里执行了enqueue_thread_func方法
     opaque->enqueue_thread = SDL_CreateThreadEx(&opaque->_enqueue_thread, enqueue_thread_func, node, "amediacodec_input_thread");
     if (!opaque->enqueue_thread) {
         ALOGE("%s: SDL_CreateThreadEx failed\n", __func__);
@@ -1599,6 +1604,7 @@ static int func_run_sync(IJKFF_Pipenode *node)
     while (!q->abort_request) {
         int64_t timeUs = opaque->acodec_first_dequeue_output_request ? 0 : AMC_OUTPUT_TIMEOUT_US;
         got_frame = 0;
+        //这个方法用于获取解码后的数据
         ret = drain_output_buffer(env, node, timeUs, &dequeue_count, frame, &got_frame);
         if (opaque->acodec_first_dequeue_output_request) {
             SDL_LockMutex(opaque->acodec_first_dequeue_output_mutex);

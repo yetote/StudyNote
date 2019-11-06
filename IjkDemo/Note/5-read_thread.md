@@ -463,7 +463,7 @@ static int audio_thread(void *arg) {
     } while (ret >= 0 || ret == AVERROR(EAGAIN) || ret == AVERROR_EOF);
 }
 ```
-去掉seek代码后就变得很简洁了。seek操作的话后面在说吧。这段代码中包括了audio_accurate_seek_fail、frame_queue_peek_writable、av_frame_move_ref、frame_queue_push这四个方法。
+去掉seek代码后就变得很简洁了。seek操作的话后面在说吧。这段代码中包括了ffp_audio_statistic_l、decoder_decode_frame、frame_queue_peek_writable、frame_queue_push这四个方法。
 ```
 static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSubtitle *sub) {
     for (;;) {
@@ -561,5 +561,340 @@ static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSub
             av_packet_unref(&pkt);
         }
     }
+}
+```
+因为第一次进入的时候，frame为null并且没有进行sendpacket，所以第一个while循环不会执行，第二个while循环用于从对应的PacketQueue中去取packet。下一个环节if条件中的flush_pkt说明一下，当启动，seek一级packet.flag为AV_PKT_FLAG_DISCONTINUITY时会向队列中放入flush_pkt。当send_packet成功后，进入第一个循环接受解码后的帧(原始数据),之后音频确定下pts，视频进行下转换。执行完成之后返回1（EOF返回0，从packet中取数据失败返回-1）
+之后通过frame_queue_peek_writable方法获取framequeue中的可用节点，获取节点后通过av_frame_move_ref进行frame的移动，最后通过frame_queue_push方法修改queue的数据个数与可读的索引（因为直接move，所以这个push方法并不是入队，而是入队后队列需要执行的操作）
+- 视频
+和音频相比，视频多了一个硬解的步骤
+```
+case AVMEDIA_TYPE_VIDEO:
+    is->video_stream = stream_index;
+    is->video_st = ic->streams[stream_index]
+    if (ffp->async_init_decoder) {
+        while (!is->initialized_decoder) {
+            SDL_Delay(5);
+        }
+        if (ffp->node_vdec) {
+            is->viddec.avctx = avctx;
+            ret = ffpipeline_config_video_decoder(ffp->pipeline, ffp);
+        }
+        if (ret || !ffp->node_vdec) {
+            decoder_init(&is->viddec, avctx, &is->videoq, is->continue_read_thread);
+            ffp->node_vdec = ffpipeline_open_video_decoder(ffp->pipeline, ffp);
+            if (!ffp->node_vdec)
+                goto fail;
+        }
+    } else {
+        decoder_init(&is->viddec, avctx, &is->videoq, is->continue_read_thread);
+        ffp->node_vdec = ffpipeline_open_video_decoder(ffp->pipeline, ffp);
+        if (!ffp->node_vdec)
+            goto fail;
+    }
+    if ((ret = decoder_start(&is->viddec, video_thread, ffp, "ff_video_dec")) < 0)
+        goto out
+    is->queue_attachments_req = 1
+    if (ffp->max_fps >= 0) {
+        if (is->video_st->avg_frame_rate.den && is->video_st->avg_frame_rate.num) {
+            double fps = av_q2d(is->video_st->avg_frame_rate);
+            SDL_ProfilerReset(&is->viddec.decode_profiler, fps + 0.5);
+            if (fps > ffp->max_fps && fps < 130.0) {
+                is->is_video_high_fps = 1;
+            }
+        }
+        if (is->video_st->r_frame_rate.den && is->video_st->r_frame_rate.num) {
+            double tbr = av_q2d(is->video_st->r_frame_rate);
+            if (tbr > ffp->max_fps && tbr < 130.0) {
+                is->is_video_high_fps = 1;
+            }
+        }
+    
+    if (is->is_video_high_fps) {
+        avctx->skip_frame = FFMAX(avctx->skip_frame, AVDISCARD_NONREF);
+        avctx->skip_loop_filter = FFMAX(avctx->skip_loop_filter, AVDISCARD_NONREF);
+        avctx->skip_idct = FFMAX(avctx->skip_loop_filter, AVDISCARD_NONREF);
+break;
+```
+其中包含ffpipeline_config_video_decoder、ffpipeline_open_video_decoder、video_thread这三个方法
+ffpipeline_config_video_decoder用于检测硬件编码设备，并配置了加码器所需要的宽高、surface以及csd-0和csd-1
+ffpipeline_open_video_decoder则用于打开MediaCodec，如果各种原因导致打开失败，则打开AVCodec
+video_thread中执行了ffpipenode_run_sync方法，而ffpipenode_run_sync最终指向了func_run_sync_loop和func_run_sync
+```
+if (ffp->mediacodec_sync) {
+        node->func_run_sync = func_run_sync_loop;
+    } else {
+        node->func_run_sync = func_run_sync;
+    }
+```
+经过全文搜索发现mediacodec_sync始终为false，所以来看一下func_run_sync方法
+```
+static int func_run_sync(IJKFF_Pipenode *node)
+{
+    if (!opaque->acodec) {
+        return ffp_video_thread(ffp);
+    }
+
+    frame = av_frame_alloc();
+
+    opaque->enqueue_thread = SDL_CreateThreadEx(&opaque->_enqueue_thread, enqueue_thread_func, node, "amediacodec_input_thread");
+
+    while (!q->abort_request) {
+        int64_t timeUs = opaque->acodec_first_dequeue_output_request ? 0 : AMC_OUTPUT_TIMEOUT_US;
+        got_frame = 0;
+        ret = drain_output_buffer(env, node, timeUs, &dequeue_count, frame, &got_frame);
+        if (opaque->acodec_first_dequeue_output_request) {
+            opaque->acodec_first_dequeue_output_request = false;
+        }
+        if (got_frame) {
+            duration = (frame_rate.num && frame_rate.den ? av_q2d((AVRational){frame_rate.den, frame_rate.num}) : 0);
+            pts = (frame->pts == AV_NOPTS_VALUE) ? NAN : frame->pts * av_q2d(tb);
+            if (ffp->framedrop > 0 || (ffp->framedrop && ffp_get_master_sync_type(is) != AV_SYNC_VIDEO_MASTER)) {
+                ffp->stat.decode_frame_count++;
+                if (frame->pts != AV_NOPTS_VALUE) {
+                    double dpts = pts;
+                    double diff = dpts - ffp_get_master_clock(is);
+                    if (!isnan(diff) && fabs(diff) < AV_NOSYNC_THRESHOLD &&
+                        diff - is->frame_last_filter_delay < 0 &&
+                        is->viddec.pkt_serial == is->vidclk.serial &&
+                        is->videoq.nb_packets) {
+                        is->frame_drops_early++;
+                        is->continuous_frame_drops_early++;
+                        if (is->continuous_frame_drops_early > ffp->framedrop) {
+                            is->continuous_frame_drops_early = 0;
+                        } else {
+                            ffp->stat.drop_frame_count++;
+                            ffp->stat.drop_frame_rate = (float)(ffp->stat.drop_frame_count) / (float)(ffp->stat.decode_frame_count);
+                            if (frame->opaque) {
+                                SDL_VoutAndroid_releaseBufferProxyP(opaque->weak_vout, (SDL_AMediaCodecBufferProxy **)&frame->opaque, false);
+                            }
+                            av_frame_unref(frame);
+                            continue;
+                        }
+                    }
+                }
+            }
+            ret = ffp_queue_picture(ffp, frame, pts, duration, av_frame_get_pkt_pos(frame), is->viddec.pkt_serial);
+            if (ret) {
+                if (frame->opaque)
+                    SDL_VoutAndroid_releaseBufferProxyP(opaque->weak_vout, (SDL_AMediaCodecBufferProxy **)&frame->opaque, false);
+            }
+            av_frame_unref(frame);
+        }
+    }
+}
+```
+删掉一些多余的代码。这代代码中会执行enqueue_thread_func线程方法、drain_output_buffer、ffp_queue_picture这三个方法
+enqueue_thread_func从名字上我们可以看出是执行视频数据填充进解码器操作
+```
+static int enqueue_thread_func(void *arg)
+{
+    while (!q->abort_request && !opaque->abort) {
+        ret = feed_input_buffer(env, node, AMC_INPUT_TIMEOUT_US, &dequeue_count);
+        if (ret != 0) {
+            goto fail;
+        }
+    }
+    ret = 0;
+}
+
+```
+emmm,feed_input_buffer方法
+```
+static int feed_input_buffer(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs, int *enqueue_count)
+{
+
+    if (enqueue_count)
+        *enqueue_count = 0;
+
+    if (d->queue->abort_request) {
+        ret = 0;
+        goto fail;
+    }
+
+    if (!d->packet_pending || d->queue->serial != d->pkt_serial) {
+        AVPacket pkt;
+        do {
+            if (d->queue->nb_packets == 0)
+                SDL_CondSignal(d->empty_queue_cond);
+            if (ffp_packet_queue_get_or_buffering(ffp, d->queue, &pkt, &d->pkt_serial, &d->finished) < 0) {
+                ret = -1;
+                goto fail;
+            }
+            if (ffp_is_flush_packet(&pkt) || opaque->acodec_flush_request) {
+                opaque->acodec_flush_request = true;
+                SDL_LockMutex(opaque->acodec_mutex);
+                if (SDL_AMediaCodec_isStarted(opaque->acodec)) {
+                    if (opaque->input_packet_count > 0) {
+                        SDL_VoutAndroid_invalidateAllBuffers(opaque->weak_vout);
+                        SDL_AMediaCodec_flush(opaque->acodec);
+                        opaque->input_packet_count = 0;
+                    }
+                }
+                opaque->acodec_flush_request = false;
+                SDL_CondSignal(opaque->acodec_cond);
+                SDL_UnlockMutex(opaque->acodec_mutex);
+                d->finished = 0;
+                d->next_pts = d->start_pts;
+                d->next_pts_tb = d->start_pts_tb;
+            }
+        } while (ffp_is_flush_packet(&pkt) || d->queue->serial != d->pkt_serial);
+        av_packet_split_side_data(&pkt);
+        av_packet_unref(&d->pkt);
+        d->pkt_temp = d->pkt = pkt;
+        d->packet_pending = 1;
+
+        if (opaque->ffp->mediacodec_handle_resolution_change &&
+            opaque->codecpar->codec_id == AV_CODEC_ID_H264) {
+            uint8_t  *size_data      = NULL;
+            int       size_data_size = 0;
+            AVPacket *avpkt          = &d->pkt_temp;
+            size_data = av_packet_get_side_data(avpkt, AV_PKT_DATA_NEW_EXTRADATA, &size_data_size);
+            if (size_data && size_data_size >= 7) {
+                int             got_picture = 0;
+                AVFrame        *frame      = av_frame_alloc();
+                AVDictionary   *codec_opts = NULL;
+                const AVCodec  *codec      = opaque->decoder->avctx->codec;
+                AVCodecContext *new_avctx  = avcodec_alloc_context3(codec);
+                int change_ret = 0;
+
+                avcodec_parameters_to_context(new_avctx, opaque->codecpar);
+                av_freep(&new_avctx->extradata);
+                new_avctx->extradata = av_mallocz(size_data_size + AV_INPUT_BUFFER_PADDING_SIZE);
+                memcpy(new_avctx->extradata, size_data, size_data_size);
+                new_avctx->extradata_size = size_data_size;
+
+                av_dict_set(&codec_opts, "threads", "1", 0);
+                change_ret = avcodec_open2(new_avctx, codec, &codec_opts);
+                av_dict_free(&codec_opts);
+
+                change_ret = avcodec_decode_video2(new_avctx, frame, &got_picture, avpkt);
+                if (change_ret < 0) {
+                    avcodec_free_context(&new_avctx);
+                    return change_ret;
+                } else {
+                    if (opaque->codecpar->width  != new_avctx->width &&
+                        opaque->codecpar->height != new_avctx->height) {
+                        ALOGW("AV_PKT_DATA_NEW_EXTRADATA: %d x %d\n", new_avctx->width, new_avctx->height);
+                        avcodec_parameters_from_context(opaque->codecpar, new_avctx);
+                        opaque->aformat_need_recreate = true;
+                        ffpipeline_set_surface_need_reconfigure_l(pipeline, true);
+                    }
+                }
+
+                av_frame_unref(frame);
+                avcodec_free_context(&new_avctx);
+            }
+        }
+
+
+        if (opaque->codecpar->codec_id == AV_CODEC_ID_H264 || opaque->codecpar->codec_id == AV_CODEC_ID_HEVC) {
+            convert_h264_to_annexb(d->pkt_temp.data, d->pkt_temp.size, opaque->nal_size, &convert_state);
+            int64_t time_stamp = d->pkt_temp.pts;
+            if (!time_stamp && d->pkt_temp.dts)
+                time_stamp = d->pkt_temp.dts;
+            if (time_stamp > 0) {
+                time_stamp = av_rescale_q(time_stamp, is->video_st->time_base, AV_TIME_BASE_Q);
+            } else {
+                time_stamp = 0;
+            }
+        }
+    }
+
+    if (d->pkt_temp.data) {
+        if (ffpipeline_is_surface_need_reconfigure_l(pipeline)) {
+            jobject new_surface = NULL;
+
+            ffpipeline_lock_surface(pipeline);
+            ffpipeline_set_surface_need_reconfigure_l(pipeline, false);
+            new_surface = ffpipeline_get_surface_as_global_ref_l(env, pipeline);
+            ffpipeline_unlock_surface(pipeline);
+
+            if (!opaque->aformat_need_recreate &&
+                (opaque->jsurface == new_surface ||
+                (opaque->jsurface && new_surface && (*env)->IsSameObject(env, new_surface, opaque->jsurface)))) {
+                J4A_DeleteGlobalRef__p(env, &new_surface);
+            } else {
+                if (opaque->aformat_need_recreate) {
+                    ret = recreate_format_l(env, node);
+        
+                    opaque->aformat_need_recreate = false;
+                }
+
+                opaque->acodec_reconfigure_request = true;
+                SDL_LockMutex(opaque->acodec_mutex);
+                ret = reconfigure_codec_l(env, node, new_surface);
+                opaque->acodec_reconfigure_request = false;
+                SDL_CondSignal(opaque->acodec_cond);
+                SDL_UnlockMutex(opaque->acodec_mutex);
+
+                J4A_DeleteGlobalRef__p(env, &new_surface);
+
+                SDL_LockMutex(opaque->acodec_first_dequeue_output_mutex);
+                while (!q->abort_request &&
+                    !opaque->acodec_reconfigure_request &&
+                    !opaque->acodec_flush_request &&
+                    opaque->acodec_first_dequeue_output_request) {
+                    SDL_CondWaitTimeout(opaque->acodec_first_dequeue_output_cond, opaque->acodec_first_dequeue_output_mutex, 100);
+                }
+                SDL_UnlockMutex(opaque->acodec_first_dequeue_output_mutex);
+
+                if (q->abort_request || opaque->acodec_reconfigure_request || opaque->acodec_flush_request) {
+                    ret = 0;
+                    goto fail;
+                }
+            }
+        }
+
+        queue_flags = 0;
+        input_buffer_index = SDL_AMediaCodec_dequeueInputBuffer(opaque->acodec, timeUs);
+        if (input_buffer_index < 0) {
+            if (SDL_AMediaCodec_isInputBuffersValid(opaque->acodec)) {
+                ret = 0;
+                goto fail;
+            } else {
+                queue_flags |= AMEDIACODEC__BUFFER_FLAG_FAKE_FRAME;
+                copy_size    = d->pkt_temp.size;
+            }
+        } else {
+            SDL_AMediaCodecFake_flushFakeFrames(opaque->acodec);
+
+            copy_size = SDL_AMediaCodec_writeInputData(opaque->acodec, input_buffer_index, d->pkt_temp.data, d->pkt_temp.size);
+        }
+
+        time_stamp = d->pkt_temp.pts;
+        if (time_stamp == AV_NOPTS_VALUE && d->pkt_temp.dts != AV_NOPTS_VALUE)
+            time_stamp = d->pkt_temp.dts;
+        if (time_stamp >= 0) {
+            time_stamp = av_rescale_q(time_stamp, is->video_st->time_base, AV_TIME_BASE_Q);
+        } else {
+            time_stamp = 0;
+        }
+        amc_ret = SDL_AMediaCodec_queueInputBuffer(opaque->acodec, input_buffer_index, 0, copy_size, time_stamp, queue_flags);
+        if (amc_ret != SDL_AMEDIA_OK) {
+            ALOGE("%s: SDL_AMediaCodec_getInputBuffer failed\n", __func__);
+            ret = -1;
+            goto fail;
+        }
+        opaque->input_packet_count++;
+        if (enqueue_count)
+            ++*enqueue_count;
+    }
+
+    if (copy_size < 0) {
+        d->packet_pending = 0;
+    } else {
+        d->pkt_temp.dts =
+        d->pkt_temp.pts = AV_NOPTS_VALUE;
+        if (d->pkt_temp.data) {
+            d->pkt_temp.data += copy_size;
+            d->pkt_temp.size -= copy_size;
+            if (d->pkt_temp.size <= 0)
+                d->packet_pending = 0;
+        } else {
+                d->packet_pending = 0;
+                d->finished = d->pkt_serial;
+        }
+    }
+
 }
 ```

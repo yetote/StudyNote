@@ -52,16 +52,18 @@ void Decode::prepare(std::string path) {
     AVFrame *pFrame = av_frame_alloc();
 
     if (av_read_frame(pFmtCtx, packet) == 0) {
-        rst = avcodec_send_packet(pCodecCtx, packet);
-        if (rst == 0) {
-            avcodec_receive_frame(pCodecCtx, pFrame);
-        } else {
-            showErr(rst);
-        }
+//        rst = avcodec_send_packet(pCodecCtx, packet);
+//        if (rst == 0) {
+        rst = avcodec_receive_frame(pCodecCtx, pFrame);
+        LOGE(Decode_TAG, "%s:%d", __func__, rst == AVERROR(EAGAIN));
+//        } else {
+//            showErr(rst);
+//        }
     } else {
         LOGE(Decode_TAG, "%s:err", __func__);
     }
     LOGE(Decode_TAG, "%s:解码完成", __func__);
+    av_packet_get_side_data
 }
 
 
