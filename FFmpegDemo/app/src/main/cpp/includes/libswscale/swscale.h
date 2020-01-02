@@ -166,15 +166,13 @@ void sws_freeContext(struct SwsContext *swsContext);
  * Allocate and return an SwsContext. You need it to perform
  * scaling/conversion operations using sws_scale().
  *
- * @param srcW the width of the source image 输入数据的宽
- * @param srcH the height of the source image 输入数据的高
- * @param srcFormat the source image format 输入数据的编码格式
- * @param dstW the width of the destination image 输出数据的宽
- * @param dstH the height of the destination image 输出数据的高
- * @param dstFormat the destination image format 输出数据的编码格式
- * @param flags specify which algorithm and options to use for rescaling 缩放算法，只有输入输出图像大小不一致的时候才有效
- * @param srcFilter 输入数据的滤波器信息
- * @param dstFilter 输出图像的滤波器信息
+ * @param srcW the width of the source image
+ * @param srcH the height of the source image
+ * @param srcFormat the source image format
+ * @param dstW the width of the destination image
+ * @param dstH the height of the destination image
+ * @param dstFormat the destination image format
+ * @param flags specify which algorithm and options to use for rescaling
  * @param param extra parameters to tune the used scaler
  *              For SWS_BICUBIC param[0] and [1] tune the shape of the basis
  *              function, param[0] tunes f(1) and param[1] f´(1)
@@ -202,20 +200,18 @@ struct SwsContext *sws_getContext(int srcW, int srcH, enum AVPixelFormat srcForm
  * @param c         the scaling context previously created with
  *                  sws_getContext()
  * @param srcSlice  the array containing the pointers to the planes of
- *                  the source slice 当前处理数据每个通道数据指针
+ *                  the source slice
  * @param srcStride the array containing the strides for each plane of
- *                  the source image 每个通道字节数
+ *                  the source image
  * @param srcSliceY the position in the source image of the slice to
  *                  process, that is the number (counted starting from
  *                  zero) in the image of the first row of the slice
- *                  起始位置
  * @param srcSliceH the height of the source slice, that is the number
  *                  of rows in the slice
- *                  处理多少行，与上一个参数一起设置的话可以进行异步处理加快速度，也可以自己规定处理区域
  * @param dst       the array containing the pointers to the planes of
- *                  the destination image 输出数据每个通道数据指针
+ *                  the destination image
  * @param dstStride the array containing the strides for each plane of
- *                  the destination image 每个输出通道字节数
+ *                  the destination image
  * @return          the height of the output slice
  */
 int sws_scale(struct SwsContext *c, const uint8_t *const srcSlice[],

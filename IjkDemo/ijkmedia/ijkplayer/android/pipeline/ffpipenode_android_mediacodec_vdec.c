@@ -763,12 +763,13 @@ static int feed_input_buffer(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs, 
         av_packet_unref(&d->pkt);
         d->pkt_temp = d->pkt = pkt;
         d->packet_pending = 1;
-
+        //mediacodec_handle_resolution_change看起来是更改分辨率
         if (opaque->ffp->mediacodec_handle_resolution_change &&
             opaque->codecpar->codec_id == AV_CODEC_ID_H264) {
             uint8_t  *size_data      = NULL;
             int       size_data_size = 0;
             AVPacket *avpkt          = &d->pkt_temp;
+            //获取side_data
             size_data = av_packet_get_side_data(avpkt, AV_PKT_DATA_NEW_EXTRADATA, &size_data_size);
             // minimum avcC(sps,pps) = 7
             if (size_data && size_data_size >= 7) {
@@ -954,6 +955,7 @@ static int feed_input_buffer(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs, 
 #endif
 
         queue_flags = 0;
+        //获取入队索引
         input_buffer_index = SDL_AMediaCodec_dequeueInputBuffer(opaque->acodec, timeUs);
         if (input_buffer_index < 0) {
             if (SDL_AMediaCodec_isInputBuffersValid(opaque->acodec)) {

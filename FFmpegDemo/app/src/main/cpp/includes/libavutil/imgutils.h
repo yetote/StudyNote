@@ -154,13 +154,13 @@ void av_image_copy_uc_from(uint8_t *dst_data[4],       const ptrdiff_t dst_lines
  * To allocate the buffer and fill in the dst_data and dst_linesize in
  * one call, use av_image_alloc().
  *
- * @param dst_data      data pointers to be filled in 准备填充的数据
- * @param dst_linesize  linesizes for the image in dst_data to be filled in 准备填充的dst数据的图像的线宽
- * @param src           buffer which will contain or contains the actual image data, can be NULL 要装填的缓冲区
- * @param pix_fmt       the pixel format of the image 填充的数据格式
- * @param width         the width of the image in pixels 每一帧的宽度
- * @param height        the height of the image in pixels 每一帧的高度
- * @param align         the value used in src for linesize alignment 字节对齐的方式
+ * @param dst_data      data pointers to be filled in
+ * @param dst_linesize  linesizes for the image in dst_data to be filled in
+ * @param src           buffer which will contain or contains the actual image data, can be NULL
+ * @param pix_fmt       the pixel format of the image
+ * @param width         the width of the image in pixels
+ * @param height        the height of the image in pixels
+ * @param align         the value used in src for linesize alignment
  * @return the size in bytes required for src, a negative error code
  * in case of failure
  */

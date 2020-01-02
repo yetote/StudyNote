@@ -1,19 +1,23 @@
 #include <jni.h>
 #include <string>
-#include <vector>
-#include "Decode.h"
+#include "decode/FFmpegDemode.h"
 
-Decode *decode;
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_example_ffmpegdemo_Player_prepare(JNIEnv *env, jobject thiz, jstring path_) {
-    std::string path = env->GetStringUTFChars(path_, JNI_FALSE);
-    decode = new Decode();
-    decode->prepare(path);
+JavaVM *jvm;
+FFmpegDemode *fFmpegDecode;
 
-    env->ReleaseStringUTFChars(path_, path.c_str());
+
+JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
+    JNIEnv *env;
+    jvm = vm;
+    if (vm->GetEnv((void **) &env, JNI_VERSION_1_6) != JNI_OK) {
+        return -1;
+    }
+
+    JNINativeMethod methods[]{
+
+    };
+    jclass jlz = env->FindClass("com/pet/ffmpegdemo/Player");
+    env->RegisterNatives(jlz, methods, sizeof(methods) / sizeof(methods[0]));
+    return JNI_VERSION_1_6;
 }
-
-
-
 
