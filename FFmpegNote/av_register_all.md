@@ -168,8 +168,8 @@ void av_register_codec_parser(AVCodecParser *parser)
 ```
 我怀疑是我版本搞混了，之前都是从尾节点判断，现在改成从头结点遍历。。。
 ### 小结
-至此，```av_register_all```函数我们全部分析完毕。
-![av_register_all流程](https://github.com/yetote/StudyNote/tree/master/res/av_register_all.jpg)
+至此，```av_register_all```函数我们全部分析完毕。  
+![av_register_all流程](https://github.com/yetote/StudyNote/blob/master/res/av_register_all.jpg)  
 我们忽略掉```ff_thread_once```，发现```av_register_all```名副其实，分别注册了封装器(解封装器)、硬件加速模块、编码器(解码器)这五部分。具体的注册方式为将对应的组件添加到对应的链表尾部。
 ### 疑问
 4.x删除掉av_register_all```后，这些组件都在那里调用呢？
