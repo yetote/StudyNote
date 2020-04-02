@@ -117,8 +117,10 @@ REGISTER_HWACCE | 硬件加速|```av_register_hwaccel```
 REGISTER_ENCODE | 编码器|```avcodec_register```
 REGISTER_DECODE | 解码器|```avcodec_register```
 REGISTER_ENCDEC | 编码器和解码器|```REGISTER_DECODE```和```REGISTER_ENCODE```
-REGISTER_PARSER | 解析器|```av_register_codec_parser```
-我们看到编码器解码器都调用了```avcodec_register```，区别在于传递的参数不同。
+REGISTER_PARSER | 解析器|```av_register_codec_parser```  
+
+我们看到编码器解码器都调用了```avcodec_register```，区别在于传递的参数不同。  
+
 宏|函数|参数
 -|-|-
 REGISTER_ENCODE|avcodec_register|ff_##x##_encoder
