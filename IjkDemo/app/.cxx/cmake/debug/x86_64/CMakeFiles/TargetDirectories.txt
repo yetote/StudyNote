@@ -1,0 +1,3 @@
+D:/AndroidStudioProjects/StudyNote/IjkDemo/app/.cxx/cmake/debug/x86_64/CMakeFiles/native-lib.dir
+D:/AndroidStudioProjects/StudyNote/IjkDemo/app/.cxx/cmake/debug/x86_64/CMakeFiles/edit_cache.dir
+D:/AndroidStudioProjects/StudyNote/IjkDemo/app/.cxx/cmake/debug/x86_64/CMakeFiles/rebuild_cache.dir
