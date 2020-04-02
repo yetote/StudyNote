@@ -35,7 +35,9 @@ static void register_all(void)
 MUXER| 封装器|```av_register_output_format```
 DEMUXER |解封装器|```av_register_input_format```
 MUXDEMUX| 封装器和解封装器|  ```DEMUXER和MUXER```
+
 放上代码
+
 ```
 #define REGISTER_MUXER(X, x)                                            \
     {                                                                   \
@@ -125,6 +127,7 @@ REGISTER_PARSER | 解析器|```av_register_codec_parser```
 -|-|-
 REGISTER_ENCODE|avcodec_register|ff_##x##_encoder
 REGISTER_DECODE|avcodec_register|ff_##x##_decoder
+
 所以我们要分析的也就是这三个函数。
 
 ##### avcodec_register
