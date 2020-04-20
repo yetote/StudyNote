@@ -1,4 +1,4 @@
-## AVFormatContext
+## AVClass
 ### AVOption
 - class_name    
     数据类型|含义
