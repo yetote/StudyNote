@@ -74,8 +74,12 @@ Android学习笔记
   - [x] [增加部分glsl代码补全(详细查看链接)](https://github.com/yetote/StudyNote/tree/master/templates)  
 - [ ] 音视频处理
   - [x] [学习计划](https://github.com/yetote/StudyNote/blob/master/音视频学习计划.md)   
-- [ ] ffmpeg  
-  - [x] [av_register_all](https://github.com/yetote/StudyNote/blob/master/FFmpegNote/av_register_all.md)
+- [ ] ffmpeg 
+  - 结构体
+    - [x] [AVClass](https://github.com/yetote/StudyNote/blob/master/FFmpegNote/结构体/AVClass.md)
+    - [x] [AVInputFormat](https://github.com/yetote/StudyNote/blob/master/FFmpegNote/结构体/AVInputFormat.md)
+  - 函数
+    - [x] [av_register_all](https://github.com/yetote/StudyNote/blob/master/FFmpegNote/av_register_all.md)
 - [ ] LeetCode
   - [ ] [简单](https://github.com/yetote/StudyNote/tree/master/leetcode/简单)
   - [ ] [中等](https://github.com/yetote/StudyNote/tree/master/leetcode/普通)
