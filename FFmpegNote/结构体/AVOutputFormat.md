@@ -45,23 +45,23 @@
     或许以下表格更为直观
     标志码|AVInputFormat|AVOutputFormat
     -|-|-
-    AVFMT_NOFILE|:blush:|:blush:
-    AVFMT_NEEDNUMBER|:blush:|:blush:
-    AVFMT_SHOW_IDS|:blush:|:disappointed:
-    AVFMT_GLOBALHEADER|:disappointed:|:blush:
-    AVFMT_NOTIMESTAMPS|:blush:|:blush:
-    AVFMT_GENERIC_INDEX|:blush:|:disappointed:
-    AVFMT_TS_DISCONT|:blush:|:disappointed:
-    AVFMT_VARIABLE_FPS|:disappointed:|:blush:
-    AVFMT_NODIMENSIONS|:disappointed:|:blush:
-    AVFMT_NOSTREAMS|:disappointed:|:blush:
-    AVFMT_NOBINSEARCH|:blush:|:disappointed:
-    AVFMT_NOGENSEARCH|:blush:|:disappointed:
-    AVFMT_NO_BYTE_SEEK|:blush:|:disappointed:
-    AVFMT_ALLOW_FLUSH|:disappointed:|:blush:
-    AVFMT_TS_NONSTRICT|:disappointed:|:blush:
-    AVFMT_TS_NEGATIVE|:disappointed:|:blush:
-    AVFMT_SEEK_TO_PTS|:blush:|:disappointed:
+    AVFMT_NOFILE|:laughing:|:laughing:
+    AVFMT_NEEDNUMBER|:laughing:|:laughing:
+    AVFMT_SHOW_IDS|:laughing:|:disappointed:
+    AVFMT_GLOBALHEADER|:disappointed:|:laughing:
+    AVFMT_NOTIMESTAMPS|:laughing:|:laughing:
+    AVFMT_GENERIC_INDEX|:laughing:|:disappointed:
+    AVFMT_TS_DISCONT|:laughing:|:disappointed:
+    AVFMT_VARIABLE_FPS|:disappointed:|:laughing:
+    AVFMT_NODIMENSIONS|:disappointed:|:laughing:
+    AVFMT_NOSTREAMS|:disappointed:|:laughing:
+    AVFMT_NOBINSEARCH|:laughing:|:disappointed:
+    AVFMT_NOGENSEARCH|:laughing:|:disappointed:
+    AVFMT_NO_BYTE_SEEK|:laughing:|:disappointed:
+    AVFMT_ALLOW_FLUSH|:disappointed:|:laughing:
+    AVFMT_TS_NONSTRICT|:disappointed:|:laughing:
+    AVFMT_TS_NEGATIVE|:disappointed:|:laughing:
+    AVFMT_SEEK_TO_PTS|:laughing:|:disappointed:
  - codec_tag
     数据类型|含义
     -|-  
