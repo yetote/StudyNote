@@ -3,7 +3,7 @@
 ## 源码分析
 该部分参考雷神的[博客](https://blog.csdn.net/leixiaohua1020/article/details/12677129)
 
-### 函数声明
+### av_register_all
 该函数在libavformat/allformats.c中
 ```
 void av_register_all(void)

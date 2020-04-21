@@ -1,6 +1,6 @@
 #### AVInputFormat
-AVInputFormat仅用于解封装器,在av_register_all(新版已删除)函数中被注册并在链表中保存所有的AVInputFormat。
-源码基于FFmpeg4.2.1
+**AVInputFormat**仅用于解封装器,在```av_register_all```(新版已删除)函数中被注册并在链表中保存所有的**AVInputFormat**。
+源码基于**FFmpeg4.2.1**
 
 - name
     数据类型|含义
@@ -17,7 +17,7 @@ AVInputFormat仅用于解封装器,在av_register_all(新版已删除)函数中�
     -|-  
     int|标志
 
-    这里虽然类型为int，但是在注释中给出了所有的标志码，这些标志码定义在avformat.h中。
+    这里虽然类型为**int**，但是在注释中给出了所有的标志码，这些标志码定义在**avformat.h**中。
 
     标志码|含义
     -|-  
@@ -32,7 +32,7 @@ AVInputFormat仅用于解封装器,在av_register_all(新版已删除)函数中�
     AVFMT_NO_BYTE_SEEK|格式不允许按字节跳转
     AVFMT_SEEK_TO_PTS|基于PTS进行跳转
 
-    注释中给出的flag并不是全部的flag，还有
+    注释中给出的**flag**并不是全部的，还有  
     标志码|含义
     -|- 
     AVFMT_GLOBALHEADER|格式要全局的header
@@ -56,19 +56,19 @@ AVInputFormat仅用于解封装器,在av_register_all(新版已删除)函数中�
     -|-  
     const struct AVCodecTag * const *|AVCodecTag
 
-    AVCodecTag结构体比较简单，直接在这里列出来就可以
+    **AVCodecTag**结构体比较简单，直接在这里列出来就可以
     ```
     typedef struct AVCodecTag {
         enum AVCodecID id;
         unsigned int tag;
     } AVCodecTag;
     ```
-    AVCodecTag有两个成员，AVCodecID和一个无符号类型的tag。
+    **AVCodecTag**有两个成员，**AVCodecID**和一个无符号类型的tag。
 - priv_class
     数据类型|含义
     -|-  
     const AVClass *|私有的AVClass
-    AVClass之前已经阅读过，主要的作用是关联AVXXXFormat和AVOption。
+    **AVClass**之前已经阅读过，主要的作用是关联**AVXXXFormat**和**AVOption**。
    
 - mime_type
     数据类型|含义
@@ -79,7 +79,7 @@ AVInputFormat仅用于解封装器,在av_register_all(新版已删除)函数中�
     数据类型|含义
     -|-  
     ff_const59 struct AVInputFormat *|AVInputFormat节点
-    这里我们看出AVInputFormat为一个链表，所以猜测为这个字段表示当前各式所支持的下一个AVInputForma。
+    这里我们看出**AVInputFormat**为一个链表，所以猜测为这个字段表示当前各式所支持的下一个**AVInputForma**。
 
 -  raw_codec_id
     数据类型|含义
@@ -167,7 +167,7 @@ AVInputFormat ff_aac_demuxer = {
 };
 
 ```
-NULL_IF_CONFIG_SMALL根据CONFIG_SMALL判断long_name是否为NULL
+```NULL_IF_CONFIG_SMALL```根据**CONFIG_SMALL**判断**long_name**是否为**NULL**
 ```
 #if CONFIG_SMALL
 #   define NULL_IF_CONFIG_SMALL(x) NULL

@@ -78,6 +78,7 @@ Android学习笔记
   - 结构体
     - [x] [AVClass](https://github.com/yetote/StudyNote/blob/master/FFmpegNote/结构体/AVClass.md)
     - [x] [AVInputFormat](https://github.com/yetote/StudyNote/blob/master/FFmpegNote/结构体/AVInputFormat.md)
+    - [x] [AVOutputFormat](https://github.com/yetote/StudyNote/blob/master/FFmpegNote/结构体/AVOutputFormat.md)
   - 函数
     - [x] [av_register_all](https://github.com/yetote/StudyNote/blob/master/FFmpegNote/av_register_all.md)
 - [ ] LeetCode
