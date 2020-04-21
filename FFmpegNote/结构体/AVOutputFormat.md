@@ -27,8 +27,10 @@
  -  flags
     数据类型|含义
     -|-  
-    int|标志
-    与AVInputFormat不同。
+    int|标志  
+    
+    与AVInputFormat不同。  
+    
     标志码|含义|是否支持AVInputFormat
     -|-|-
     AVFMT_NOFILE|解封装器将使用avio_open，调用者不提供任何打开的文件|支持    
