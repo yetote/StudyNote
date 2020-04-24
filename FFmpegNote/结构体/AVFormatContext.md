@@ -40,7 +40,7 @@
     -|-  
     unsigned int |AVFormatContext中流的数量 
 
- - AVStream **streams 
+ - streams 
     数据类型|含义
     -|-  
     AVStream **|文件中所有流的列表 
